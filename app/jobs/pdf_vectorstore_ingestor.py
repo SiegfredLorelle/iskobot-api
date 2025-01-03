@@ -1,17 +1,10 @@
-import os
-from google.cloud.sql.connector import Connector
-import pg8000
-from langchain_community.vectorstores.pgvector import PGVector
-from langchain_google_vertexai import VertexAIEmbeddings
 from google.cloud import storage
-from dotenv import load_dotenv
 import fitz  # PyMuPDF
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 import re
 from app.database.vectorstore import initialize_vectorstore
 from app.config import Config
-
-load_dotenv()
+from app.storage.gcs import GCSHandler
 
 def clean_text(text: str) -> str:
     """Clean extracted text by removing extra whitespace and unwanted characters."""
@@ -56,8 +49,8 @@ def create_chunks(text: str, metadata: dict) -> list:
     """Create optimized chunks from text using RecursiveCharacterTextSplitter."""
     text_splitter = RecursiveCharacterTextSplitter(
         separators=["\n\n", "\n", ".", "!", "?", ",", " "],
-        chunk_size=500,          # Adjust based on your needs
-        chunk_overlap=50,        # Slight overlap to maintain context
+        chunk_size=1_000,          # Adjust based on your needs
+        chunk_overlap=100,        # Slight overlap to maintain context
         length_function=len,
         is_separator_regex=False
     )
@@ -70,15 +63,9 @@ def create_chunks(text: str, metadata: dict) -> list:
     return texts
 
 def main():
-    # Initialize Storage Client
-    client = storage.Client()
-    bucket_name = Config.GCS_BUCKET_NAME
-    bucket = client.bucket(bucket_name)
-    print(f"Bucket name: {bucket}")
-
-    # List all PDFs in the root of the GCS bucket
-    blobs = bucket.list_blobs()
-    pdf_files = [blob for blob in blobs if blob.name.lower().endswith('.pdf')]
+    # Get all PDFs from Google Cloud Storage
+    gcs_handler = GCSHandler()
+    pdf_files = gcs_handler.list_pdf_files()
     print(f"Number of PDFs found: {len(pdf_files)}")
     
     # Set up PGVector instance

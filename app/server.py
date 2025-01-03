@@ -44,7 +44,7 @@ Your answer: """)
 
 # (4) Initialize LLM
 llm = VertexAI(
-    model_name="gemini-1.0-pro-001",
+    model_name="gemini-1.0-pro-002",
     temperature=0.2,
     max_output_tokens=100,
     top_k=40,
