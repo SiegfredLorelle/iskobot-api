@@ -1,21 +1,15 @@
 from fastapi import FastAPI
 from fastapi.responses import RedirectResponse, JSONResponse
 from langserve import add_routes
-import pg8000
-import os
-from google.cloud.sql.connector import Connector
 from langchain_google_vertexai import VertexAI
-from langchain_google_vertexai import VertexAIEmbeddings
 from langchain_core.runnables import RunnablePassthrough, RunnableParallel
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import PromptTemplate
-from langchain_community.vectorstores.pgvector import PGVector
-from app.models import QueryRequest, QueryResponse
 from app.database.vectorstore import initialize_vectorstore
+from app.models.query_request import QueryRequest
+from app.models.query_response import QueryResponse
 
 from dotenv import load_dotenv
-
-load_dotenv()
 
 app = FastAPI()
 
@@ -72,7 +66,6 @@ async def get_answers_from_query(request: QueryRequest):
     answer = await chain.ainvoke(request.query)
     response = QueryResponse(answer=answer)
     return JSONResponse(content=response.dict())
-
 
 
 add_routes(app, chain)
