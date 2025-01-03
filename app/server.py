@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, JSONResponse
 from langserve import add_routes
 import pg8000
 import os
@@ -10,17 +10,12 @@ from langchain_core.runnables import RunnablePassthrough, RunnableParallel
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import PromptTemplate
 from langchain_community.vectorstores.pgvector import PGVector
+from .models import QueryRequest, QueryResponse
 from dotenv import load_dotenv
 
 load_dotenv()
 
 app = FastAPI()
-
-
-@app.get("/")
-async def redirect_root_to_docs():
-    return RedirectResponse("/playground")
-
 
 # (1) Initialize VectorStore
 connector = Connector()
@@ -88,9 +83,21 @@ chain = (
     | StrOutputParser()
 )
 
+
+@app.get("/")
+async def redirect_root_to_docs():
+    return RedirectResponse("/playground")
+
+@app.post("/query", response_model=QueryRequest)
+async def get_answers_from_query(request: QueryRequest):
+    answer = await chain.ainvoke(request.query)
+    response = QueryResponse(answer=answer)
+    return JSONResponse(content=response.dict())
+
+
+
 add_routes(app, chain)
 
 if __name__ == "__main__":
     import uvicorn
-
     uvicorn.run(app, host="0.0.0.0", port=8080)
