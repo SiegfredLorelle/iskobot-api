@@ -19,6 +19,8 @@ langchain-community = "0.2.5"
 pgvector = "^0.3.6"
 httpx = "0.27.2"
 python-dotenv = "^1.0.1"
+fitz = "^0.0.1.dev2"
+pymupdf = "^1.25.1"
 
 
 [tool.poetry.group.dev.dependencies]
