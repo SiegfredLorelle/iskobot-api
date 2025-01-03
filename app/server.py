@@ -9,38 +9,45 @@ from app.database.vectorstore import initialize_vectorstore
 from app.models.query_request import QueryRequest
 from app.models.query_response import QueryResponse
 
-from dotenv import load_dotenv
-
 app = FastAPI()
 
 # (1) Initialize VectorStore
 vectorstore = initialize_vectorstore()
 
 # (2) Build retriever
+def format_docs(docs):
+    formatted_docs = []
+    for doc in docs:
+        source = doc.metadata.get('source', 'Unknown')
+        content = doc.page_content
+        formatted_docs.append(f"Source: {source}\nContent: {content}")
+    return "\n\n---\n\n".join(formatted_docs)
 
-
-def concatenate_docs(docs):
-    return "\n\n".join(doc.page_content for doc in docs)
-
-
-notes_retriever = vectorstore.as_retriever() | concatenate_docs
+notes_retriever = vectorstore.as_retriever(
+    search_type="similarity",
+    search_kwargs={
+        "k": 5,
+        "score_threshold": 0.5
+    }
+) | format_docs
 
 # (3) Create prompt template
 prompt_template = PromptTemplate.from_template(
-    """You are a Cloud Run expert answering questions. 
-Use the retrieved release notes to answer questions
-Give a concise answer, and if you are unsure of the answer, just say so.
+    """You are an expert answering questions. 
+Use the provided documentation to answer questions.
+Give a concise answer.
+If the answer isn't clear from the documents, say so.
 
-Release notes: {notes}
+Documentation: {notes}
 
-Here is your question: {query}
+Question: {query}
 Your answer: """)
 
 # (4) Initialize LLM
 llm = VertexAI(
     model_name="gemini-1.0-pro-002",
     temperature=0.2,
-    max_output_tokens=100,
+    max_output_tokens=200,
     top_k=40,
     top_p=0.95
 )

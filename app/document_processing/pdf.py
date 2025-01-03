@@ -2,7 +2,7 @@ from typing import Dict, Any
 import fitz  # PyMuPDF
 from ..utils.text_cleaner import clean_text
 
-def extract_text_from_pdf(blob) -> Dict[str: Any]:
+def extract_text_from_pdf(blob) -> Dict[str, Any]:
     """Extract text from PDF with metadata."""
     print(f"Processing: {blob.name}")
     metadata = {
