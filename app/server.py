@@ -10,13 +10,16 @@ from langchain_core.runnables import RunnablePassthrough, RunnableParallel
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import PromptTemplate
 from langchain_community.vectorstores.pgvector import PGVector
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = FastAPI()
 
 
 @app.get("/")
 async def redirect_root_to_docs():
-    return RedirectResponse("/docs")
+    return RedirectResponse("/playground")
 
 
 # (1) Initialize VectorStore
