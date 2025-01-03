@@ -8,6 +8,8 @@ from dotenv import load_dotenv
 import fitz  # PyMuPDF
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 import re
+from app.database.vectorstore import initialize_vectorstore
+from app.config import Config
 
 load_dotenv()
 
@@ -70,7 +72,7 @@ def create_chunks(text: str, metadata: dict) -> list:
 def main():
     # Initialize Storage Client
     client = storage.Client()
-    bucket_name = os.getenv("GCS_BUCKET_NAME", "")
+    bucket_name = Config.GCS_BUCKET_NAME
     bucket = client.bucket(bucket_name)
     print(f"Bucket name: {bucket}")
 
@@ -80,28 +82,7 @@ def main():
     print(f"Number of PDFs found: {len(pdf_files)}")
     
     # Set up PGVector instance
-    connector = Connector()
-    
-    def getconn() -> pg8000.dbapi.Connection:
-        return connector.connect(
-            os.getenv("DB_INSTANCE_NAME", ""),
-            "pg8000",
-            user=os.getenv("DB_USER", ""),
-            password=os.getenv("DB_PASS", ""),
-            db=os.getenv("DB_NAME", ""),
-        )
-
-    store = PGVector(
-        connection_string="postgresql+pg8000://",
-        use_jsonb=True,
-        engine_args=dict(
-            creator=getconn,
-        ),
-        embedding_function=VertexAIEmbeddings(
-            model_name="textembedding-gecko@003"
-        ),
-        pre_delete_collection=True
-    )
+    store = initialize_vectorstore(delete_on_insert=True)
 
     # Process each PDF
     all_chunks = []
@@ -125,13 +106,14 @@ def main():
             print(f"Error processing {pdf.name}: {str(e)}")
 
     # Store chunks in database
+    print("\nStoring chunks to database")
     if all_chunks:
         try:
             texts = [chunk.page_content for chunk in all_chunks]
             metadatas = [chunk.metadata for chunk in all_chunks]
             
             ids = store.add_texts(texts=texts, metadatas=metadatas)
-            print(f"\nSuccessfully saved {len(ids)} chunks to database")
+            print(f"uccessfully saved {len(ids)} chunks to database")
             print(f"Average chunk size: {sum(len(t) for t in texts) / len(texts):.0f} characters")
             
         except Exception as e:

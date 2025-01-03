@@ -1,6 +1,8 @@
 from dotenv import load_dotenv
 import os
 
+load_dotenv()
+
 class Config:
     REGION = os.getenv("REGION", "")
     DB_INSTANCE_NAME = os.getenv("DB_INSTANCE_NAME", "")

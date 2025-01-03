@@ -10,7 +10,9 @@ from langchain_core.runnables import RunnablePassthrough, RunnableParallel
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import PromptTemplate
 from langchain_community.vectorstores.pgvector import PGVector
-from .models import QueryRequest, QueryResponse
+from app.models import QueryRequest, QueryResponse
+from app.database.vectorstore import initialize_vectorstore
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -18,30 +20,7 @@ load_dotenv()
 app = FastAPI()
 
 # (1) Initialize VectorStore
-connector = Connector()
-
-
-def getconn() -> pg8000.dbapi.Connection:
-    conn: pg8000.dbapi.Connection = connector.connect(
-        os.getenv("DB_INSTANCE_NAME", ""),
-        "pg8000",
-        user=os.getenv("DB_USER", ""),
-        password=os.getenv("DB_PASS", ""),
-        db=os.getenv("DB_NAME", ""),
-    )
-    return conn
-
-
-vectorstore = PGVector(
-    connection_string="postgresql+pg8000://",
-    use_jsonb=True,
-    engine_args=dict(
-        creator=getconn,
-    ),
-    embedding_function=VertexAIEmbeddings(
-        model_name="textembedding-gecko@003"
-    )
-)
+vectorstore = initialize_vectorstore()
 
 # (2) Build retriever
 
