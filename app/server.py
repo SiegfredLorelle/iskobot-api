@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.responses import RedirectResponse, JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 from langserve import add_routes
 from langchain_google_vertexai import VertexAI
 from langchain_core.runnables import RunnablePassthrough, RunnableParallel
@@ -10,6 +11,17 @@ from app.models.query_request import QueryRequest
 from app.models.query_response import QueryResponse
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",
+        "iskobot-ui.vercel.app",
+    ],
+    allow_credentials=True,
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
+)
 
 # (1) Initialize VectorStore
 vectorstore = initialize_vectorstore()
@@ -71,7 +83,7 @@ async def redirect_root_to_docs():
 @app.post("/query", response_model=QueryRequest)
 async def get_answers_from_query(request: QueryRequest):
     answer = await chain.ainvoke(request.query)
-    response = QueryResponse(answer=answer)
+    response = QueryResponse(response=answer)
     return JSONResponse(content=response.dict())
 
 
