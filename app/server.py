@@ -16,7 +16,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
-        "iskobot-ui.vercel.app",
+        "https://iskobot-ui.vercel.app",
     ],
     allow_credentials=True,
     allow_methods=["GET", "POST"],
