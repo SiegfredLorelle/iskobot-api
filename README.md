@@ -37,7 +37,14 @@ DB_PASS=your-db-password
 DB_NAME=your-db-name
 GCS_BUCKET_NAME=your-gcs-bucket-name
 ```
-## Test API with cURL
+## Usage
+### Run Locally
+```bash
+poetry run uvicorn app.server:app --port 8080 --reload
+```
+
+### Test API with cURL
+
 ```bash
 # Sample querying to chatbot running locally
 curl -X 'POST' \
