@@ -46,21 +46,43 @@ poetry run uvicorn app.server:app --port 8080 --reload
 ### Test API with cURL
 
 ```bash
-# Sample querying to chatbot running locally
+# Sample querying when running locally
 curl -X 'POST' \
-  'http://127.0.0.1:8080/query' \
+  'http://localhost:8080/query' \
   -H 'Content-Type: application/json' \
   -d '{
   "query": "Give me a TLDR of the paper Attention is All You need."
 }'
 ```
 ```bash
-# Sample querying deployed chatbot
+# Sample querying on prod
 curl -X 'POST' \
   'https://run-rag-116711660246.asia-east1.run.app/query' \
   -H 'Content-Type: application/json' \
   -d '{
   "query": "Give me a TLDR of the paper Attention is All You need."
+}'
+```
+
+```bash
+# Sample transcribing on prod
+curl -X POST \
+"https://run-rag-116711660246.asia-east1.run.app/transcribe" \
+-H "Content-Type: application/json" \
+-d '{
+  "gcs_uri": "gs://project-iskobot-voice-queries/audio/1.wav",
+  "gcs_output_folder": "gs://project-iskobot-voice-queries/transcripts"
+}'
+```
+
+```bash
+# Sample transcribing locally
+curl -X POST \
+'http://localhost:8080/transcribe' \
+-H "Content-Type: application/json" \
+-d '{
+  "gcs_uri": "gs://project-iskobot-voice-queries/audio/1.wav",
+  "gcs_output_folder": "gs://project-iskobot-voice-queries/transcripts"
 }'
 ```
 

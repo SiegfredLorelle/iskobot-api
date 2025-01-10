@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import RedirectResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from langserve import add_routes
@@ -9,9 +9,12 @@ from langchain_core.prompts import PromptTemplate
 from app.database.vectorstore import initialize_vectorstore
 from app.models.query_request import QueryRequest
 from app.models.query_response import QueryResponse
+from pydantic import BaseModel
+from app.speech_processing.transcriber import transcribe_audio
 
 app = FastAPI()
 
+# CORS Middleware setup
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -54,7 +57,7 @@ Documentation: {notes}
 
 Question: {query}
 Your answer: """)
-
+    
 # (4) Initialize LLM
 llm = VertexAI(
     model_name="gemini-1.0-pro-002",
@@ -75,20 +78,35 @@ chain = (
     | StrOutputParser()
 )
 
-
+# Redirect root to playground
 @app.get("/")
 async def redirect_root_to_docs():
     return RedirectResponse("/playground")
 
+# Handle query requests
 @app.post("/query", response_model=QueryRequest)
 async def get_answers_from_query(request: QueryRequest):
     answer = await chain.ainvoke(request.query)
     response = QueryResponse(response=answer)
     return JSONResponse(content=response.dict())
 
+# Transcription request model
+class TranscriptionRequest(BaseModel):
+    gcs_uri: str
 
+@app.post("/transcribe")
+async def transcribe_speech(request: TranscriptionRequest):
+    try:
+        # Call the transcription function
+        transcription_result = transcribe_audio(request.gcs_uri)
+        return transcription_result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error during transcription: {str(e)}")
+
+# Add routes for the chain
 add_routes(app, chain)
 
+# Run the app
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8080)
