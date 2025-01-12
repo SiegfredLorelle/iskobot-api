@@ -595,6 +595,19 @@ marshmallow = ">=3.18.0,<4.0.0"
 typing-inspect = ">=0.4.0,<1"
 
 [[package]]
+name = "distro"
+version = "1.9.0"
+description = "Distro - an OS platform information API"
+optional = false
+python-versions = ">=3.6"
+groups = ["main"]
+markers = "python_version == \"3.11\" or python_version >= \"3.12\""
+files = [
+    {file = "distro-1.9.0-py3-none-any.whl", hash = "sha256:7bffd925d65168f85027d8da9af6bddab658135b840670a223589bc0c8ef02b2"},
+    {file = "distro-1.9.0.tar.gz", hash = "sha256:2fa77c6fd8940f116ee1d6b94a2f90b13b5ea8d019b98bc8bafdcabcdd9bdbed"},
+]
+
+[[package]]
 name = "dnspython"
 version = "2.7.0"
 description = "DNS toolkit"
@@ -1241,6 +1254,27 @@ files = [
     {file = "gritql-0.1.5-py2.py3-none-any.whl", hash = "sha256:b17b314d995a11b8e06839280b079ffc8a30bdfb0d2beebcb4332186a0b2cdf0"},
     {file = "gritql-0.1.5.tar.gz", hash = "sha256:7568ee2d7c7457000374c91289bacb05e92524c77a5d5f63fe777b29622bff4c"},
 ]
+
+[[package]]
+name = "groq"
+version = "0.15.0"
+description = "The official Python library for the groq API"
+optional = false
+python-versions = ">=3.8"
+groups = ["main"]
+markers = "python_version == \"3.11\" or python_version >= \"3.12\""
+files = [
+    {file = "groq-0.15.0-py3-none-any.whl", hash = "sha256:c200558b67fee4b4f2bb89cc166337e3419a68c23280065770f8f8b0729c79ef"},
+    {file = "groq-0.15.0.tar.gz", hash = "sha256:9ad08ba6156c67d0975595a8515b517f22ff63158e063c55192e161ed3648af1"},
+]
+
+[package.dependencies]
+anyio = ">=3.5.0,<5"
+distro = ">=1.7.0,<2"
+httpx = ">=0.23.0,<1"
+pydantic = ">=1.9.0,<3"
+sniffio = "*"
+typing-extensions = ">=4.10,<5"
 
 [[package]]
 name = "grpc-google-iam-v1"
@@ -4046,4 +4080,4 @@ propcache = ">=0.2.0"
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "fde8f00808d0119f68d086be910e4a1b156c9d387c4215a038289e9b5522850d"
+content-hash = "56c0b4cdf40569d72fa84a57f387eea582a064b3ee0d99de57db328fd425b83b"

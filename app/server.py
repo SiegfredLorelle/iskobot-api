@@ -9,8 +9,6 @@ from langchain_core.prompts import PromptTemplate
 from app.database.vectorstore import initialize_vectorstore
 from app.models.query_request import QueryRequest
 from app.models.query_response import QueryResponse
-from pydantic import BaseModel
-from app.speech_processing.transcriber import transcribe_audio
 
 app = FastAPI()
 
@@ -90,9 +88,6 @@ async def get_answers_from_query(request: QueryRequest):
     response = QueryResponse(response=answer)
     return JSONResponse(content=response.dict())
 
-# Transcription request model
-class TranscriptionRequest(BaseModel):
-    gcs_uri: str
 
 @app.post("/transcribe")
 async def transcribe_speech(request: TranscriptionRequest):
