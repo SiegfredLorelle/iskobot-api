@@ -22,6 +22,7 @@ python-dotenv = "^1.0.1"
 fitz = "^0.0.1.dev2"
 pymupdf = "^1.25.1"
 groq = "^0.15.0"
+python-multipart = "^0.0.20"
 
 
 [tool.poetry.group.dev.dependencies]
