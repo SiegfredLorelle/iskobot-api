@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi import FastAPI, UploadFile, File
 from fastapi.responses import RedirectResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from langserve import add_routes
@@ -9,19 +9,8 @@ from langchain_core.prompts import PromptTemplate
 from app.database.vectorstore import initialize_vectorstore
 from app.models.query_request import QueryRequest
 from app.models.query_response import QueryResponse
-from groq import Groq
-import tempfile
-import os
-import logging
-
-# Set up logging for debugging
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
-
+from app.transcripts_processing.transcriber import transcribe_audio
 app = FastAPI()
-
-# Initialize Groq client
-client = Groq()
 
 # CORS Middleware setup
 app.add_middleware(
@@ -102,52 +91,7 @@ async def get_answers_from_query(request: QueryRequest):
 # Transcribe audio input
 @app.post("/transcribe")
 async def transcribe_speech(audio_file: UploadFile = File(...)):
-    try:
-        # Debug: Log information about the incoming file
-        logger.debug(f"Received file: {audio_file.filename}, size: {audio_file.size} bytes")
-        logger.debug(f"Content type: {audio_file.content_type}")
-
-        # Check if the file is indeed a valid WAV file
-        if not audio_file.filename.endswith(".wav"):
-            logger.error("Invalid file format. Expected .wav file.")
-            raise HTTPException(status_code=422, detail="Invalid file format. Only .wav files are allowed.")
-
-        # Create a temporary file to store the uploaded audio
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.wav') as temp_file:
-            content = await audio_file.read()
-            logger.debug(f"Read {len(content)} bytes of data from the file")
-
-            # Debug: Ensure that the file content is being written to the temporary file correctly
-            temp_file.write(content)
-            temp_path = temp_file.name
-
-        # Debug: Log the path of the temporary file
-        logger.debug(f"Temporary file created at: {temp_path}")
-
-        try:
-            # Open the temporary file and transcribe
-            with open(temp_path, "rb") as file:
-                logger.debug("Sending file to transcription service...")
-                transcription = client.audio.transcriptions.create(
-                    file=(temp_path, file.read()),
-                    model="whisper-large-v3-turbo",
-                    response_format="verbose_json",
-                )
-                transcription_text = transcription.text
-
-            # Return transcription result
-            logger.debug(f"Transcription result: {transcription_text}")
-            return {"transcription": transcription_text}
-
-        finally:
-            # Clean up: remove the temporary file
-            os.unlink(temp_path)
-            logger.debug(f"Temporary file {temp_path} removed.")
-
-    except Exception as e:
-        # Log the error before raising it
-        logger.error(f"Error during transcription: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error during transcription: {str(e)}")
+    return await transcribe_audio(audio_file)
 
 # Add routes for the chain
 add_routes(app, chain)
