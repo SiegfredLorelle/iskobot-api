@@ -92,13 +92,14 @@ curl -X POST \
 
 
 ## Deploy to Cloud Run
-```
+```bash
 gcloud run deploy <APP_NAME> \
   --source . \
   --set-env-vars=DB_INSTANCE_NAME=$DB_INSTANCE_NAME \
   --set-env-vars=DB_USER=$DB_USER \
   --set-env-vars=DB_NAME=$DB_NAME \
   --set-env-vars=DB_PASS=$DB_PASS \
+  --set-env-vars=GROQ_API_KEY=$GROQ_API_KEY \
   --region=$REGION \
   --allow-unauthenticated
 ```
