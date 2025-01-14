@@ -1,6 +1,6 @@
 from tenacity import retry, wait_exponential, stop_after_attempt
 from langchain.embeddings.base import Embeddings
-import time
+
 
 class RateLimitedEmbeddings(Embeddings):
     """Custom embeddings class with improved rate limiting capabilities."""

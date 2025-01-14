@@ -10,6 +10,7 @@ from app.database.vectorstore import initialize_vectorstore
 from app.models.QueryRequest import QueryRequest
 from app.models.QueryResponse import QueryResponse
 from app.transcripts_processing.transcriber import transcribe_audio
+
 app = FastAPI()
 
 # CORS Middleware setup
@@ -36,7 +37,7 @@ def format_docs(docs):
         formatted_docs.append(f"Source: {source}\nContent: {content}")
     return "\n\n---\n\n".join(formatted_docs)
 
-notes_retriever = vectorstore.as_retriever(
+knowledge_bank_retriever = vectorstore.as_retriever(
     search_type="similarity",
     search_kwargs={
         "k": 5,
@@ -46,15 +47,16 @@ notes_retriever = vectorstore.as_retriever(
 
 # (3) Create prompt template
 prompt_template = PromptTemplate.from_template(
-    """You are an expert answering questions. 
-Use the provided documentation to answer questions.
-Give a concise answer.
-If the answer isn't clear from the documents, say so.
+    """You are Iskobot, an expert in Computer Engineering.
+Refer to the provided knowledge bank to answer questions.
+Provide a brief and clear answer.
+If the answer isn't clear from your knowledge, acknowledge that you don't have sufficient information. 
 
-Documentation: {notes}
+Knowledge Bank: {knowledge_bank}
 
 Question: {query}
 Your answer: """)
+
     
 # (4) Initialize LLM
 llm = VertexAI(
@@ -68,7 +70,7 @@ llm = VertexAI(
 # (5) Chain everything together
 chain = (
     RunnableParallel({
-        "notes": notes_retriever,
+        "knowledge_bank": knowledge_bank_retriever,
         "query": RunnablePassthrough()
     })
     | prompt_template

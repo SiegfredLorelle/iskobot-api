@@ -5,14 +5,20 @@ from langchain_google_vertexai import VertexAIEmbeddings
 
 def initialize_vectorstore(for_ingestion=False):
     """Initialize the vector store with improved rate limiting for ingestion."""
-    base_embeddings = VertexAIEmbeddings(model_name="text-embedding-005")
-    embedding_function = RateLimitedEmbeddings(
-        base_embeddings, 
-        for_ingestion=for_ingestion,
-        batch_size=5,  # Process 5 documents at a time
-        base_delay=2   # Wait 2 seconds between batches
-    )
+    # Default embedding function
+    embedding_function = VertexAIEmbeddings(
+            model_name="text-embedding-005"
+        )
+
+    if for_ingestion:
+        embedding_function = RateLimitedEmbeddings(
+            base_embeddings=embedding_function, 
+            for_ingestion=for_ingestion,
+            batch_size=5,  # Process 5 documents at a time
+            base_delay=2   # Wait 2 seconds between batches
+        )
     
+    # Ensure PGVector still gets a valid embedding function
     return PGVector(
         connection_string="postgresql+pg8000://",
         use_jsonb=True,
