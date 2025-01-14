@@ -1,41 +1,46 @@
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from app.document_processing.preprocess_documents import preprocess_document
 from app.database.vectorstore import initialize_vectorstore
 from app.storage.gcs import GCSHandler
-from app.document_processing.pdf import extract_text_from_pdf
 from app.document_processing.chunking import create_chunks
+from tqdm import tqdm
 
 def main():
-    # Get all PDFs from Google Cloud Storage
+    # Initialize GCS handler
     gcs_handler = GCSHandler()
-    pdf_files = gcs_handler.list_pdf_files()
-    print(f"Number of PDFs found: {len(pdf_files)}")
+    
+    # List all supported files
+    supported_files = gcs_handler.list_files_by_extension(["pdf", "docx", "pptx"])
+    print(f"Number of files found: {len(supported_files)}")
 
     # Set up PGVector instance
-    store = initialize_vectorstore(delete_on_insert=True)
+    store = initialize_vectorstore(for_ingestion=True)
 
-    # Process each PDF
+    # Process each file
     all_chunks = []
-    for pdf in pdf_files:
+    for file in tqdm(supported_files, desc="Processing files"):
         try:
-            print(f"\nProcessing PDF: {pdf.name}")
-            result = extract_text_from_pdf(pdf)
+            print(f"\nProcessing: {file.name}")
+            file_type = file.name.split(".")[-1].lower()
+            result = preprocess_document(file, file_type)
             chunks = create_chunks(result["text"], result["metadata"])
-            print(f"Created {len(chunks)} chunks from {pdf.name}")
+            print(f"Created {len(chunks)} chunks from {file.name}")
             all_chunks.extend(chunks)
-            
         except Exception as e:
-            print(f"Error processing {pdf.name}: {str(e)}")
+            print(f"Error processing {file.name}: {str(e)}")
 
-    # Store chunks in database
-    print("\nStoring chunks to database")
+    # Store chunks in the database
+    print("\nStoring chunks to the database")
     if all_chunks:
         try:
-            texts = [chunk.page_content for chunk in all_chunks]
-            metadatas = [chunk.metadata for chunk in all_chunks]
-            ids = store.add_texts(texts=texts, metadatas=metadatas)
-            print(f"uccessfully saved {len(ids)} chunks to database")
-            print(f"Average chunk size: {sum(len(t) for t in texts) / len(texts):.0f} characters")
-
+            batch_size = 20  # Adjust based on your needs
+            for i in range(0, len(all_chunks), batch_size):
+                batch = all_chunks[i:i + batch_size]
+                texts = [chunk.page_content for chunk in batch]
+                metadatas = [chunk.metadata for chunk in batch]
+                ids = store.add_texts(texts=texts, metadatas=metadatas)
+                print(f"Successfully saved batch {i//batch_size + 1}/{(len(all_chunks) + batch_size - 1)//batch_size}")
+            print(f"Successfully saved all {len(all_chunks)} chunks to the database")
+            print(f"Average chunk size: {sum(len(c.page_content) for c in all_chunks) / len(all_chunks):.0f} characters")
         except Exception as e:
             print(f"Error saving to database: {str(e)}")
     else:
