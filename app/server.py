@@ -7,8 +7,8 @@ from langchain_core.runnables import RunnablePassthrough, RunnableParallel
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import PromptTemplate
 from app.database.vectorstore import initialize_vectorstore
-from app.models.query_request import QueryRequest
-from app.models.query_response import QueryResponse
+from app.models.QueryRequest import QueryRequest
+from app.models.QueryResponse import QueryResponse
 from app.transcripts_processing.transcriber import transcribe_audio
 app = FastAPI()
 
