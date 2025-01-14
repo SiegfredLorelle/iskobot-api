@@ -50,7 +50,7 @@ prompt_template = PromptTemplate.from_template(
     """You are Iskobot, an expert in Computer Engineering.
 Refer to the provided knowledge bank to answer questions.
 Provide a brief and clear answer.
-If the answer isn't clear from your knowledge, acknowledge that you don't have sufficient information. 
+If the answer isn't clear from your knowledge bank, acknowledge that you don't have sufficient information. 
 
 Knowledge Bank: {knowledge_bank}
 
@@ -62,7 +62,7 @@ Your answer: """)
 llm = VertexAI(
     model_name="gemini-1.0-pro-002",
     temperature=0.2,
-    max_output_tokens=200,
+    max_output_tokens=500,
     top_k=40,
     top_p=0.95
 )
