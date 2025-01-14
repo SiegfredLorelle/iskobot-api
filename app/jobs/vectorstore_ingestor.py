@@ -1,6 +1,6 @@
 from app.document_processing.preprocess_documents import preprocess_document
 from app.database.vectorstore import initialize_vectorstore
-from app.storage.gcs import GCSHandler
+from app.storage.GCSHandler import GCSHandler
 from app.document_processing.chunking import create_chunks
 from tqdm import tqdm
 
