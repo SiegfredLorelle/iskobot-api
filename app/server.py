@@ -10,6 +10,7 @@ from app.database.vectorstore import initialize_vectorstore
 from app.models.QueryRequest import QueryRequest
 from app.models.QueryResponse import QueryResponse
 from app.transcripts_processing.transcriber import transcribe_audio
+from google.api_core.exceptions import ResourceExhausted
 
 app = FastAPI()
 
@@ -60,7 +61,7 @@ Your answer: """)
 
 # (4) Initialize LLM
 llm = VertexAI(
-    model_name="gemini-1.5-pro-002",
+    model_name="gemini-1.5-flash-002",
     temperature=0.2,
     max_output_tokens=500,
     top_k=40,
@@ -86,9 +87,20 @@ async def redirect_root_to_docs():
 # Handle query requests
 @app.post("/query", response_model=QueryRequest)
 async def get_answers_from_query(request: QueryRequest):
-    answer = await chain.ainvoke(request.query)
-    response = QueryResponse(response=answer)
-    return JSONResponse(content=response.dict())
+    try:
+        answer = await chain.ainvoke(request.query)
+        response = QueryResponse(response=answer)
+        return JSONResponse(content=response.dict())
+    except ResourceExhausted as e:
+        # Log the full error message for debugging
+        print(f"Error: {e}")
+        # Return a user-friendly error message to the frontend
+        return JSONResponse(
+            content={
+                "error": "Online prediction request quota exceeded. Please try again later."
+            },
+            status_code=429  # HTTP status code for "Too Many Requests"
+        )
 
 # Transcribe audio input
 @app.post("/transcribe")
