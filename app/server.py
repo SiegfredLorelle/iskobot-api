@@ -11,8 +11,22 @@ from app.models.QueryRequest import QueryRequest
 from app.models.QueryResponse import QueryResponse
 from app.transcripts_processing.transcriber import transcribe_audio
 from google.api_core.exceptions import ResourceExhausted
+import asyncio
 
 app = FastAPI()
+
+async def retry_with_backoff(func, retries=5, backoff_in_seconds=1):
+    for attempt in range(retries):
+        try:
+            return await func()
+        except ResourceExhausted as e:
+            if attempt < retries - 1:
+                wait_time = backoff_in_seconds * (2 ** attempt)  # Exponential backoff
+                print(f"Quota exceeded. Retrying in {wait_time} seconds...")
+                await asyncio.sleep(wait_time)
+            else:
+                print("Max retries reached.")
+                raise e
 
 # CORS Middleware setup
 app.add_middleware(
@@ -87,19 +101,20 @@ async def redirect_root_to_docs():
 # Handle query requests
 @app.post("/query", response_model=QueryRequest)
 async def get_answers_from_query(request: QueryRequest):
+    async def invoke_chain():
+        return await chain.ainvoke(request.query)
+    
     try:
-        answer = await chain.ainvoke(request.query)
+        answer = await retry_with_backoff(invoke_chain)
         response = QueryResponse(response=answer)
         return JSONResponse(content=response.dict())
     except ResourceExhausted as e:
-        # Log the full error message for debugging
         print(f"Error: {e}")
-        # Return a user-friendly error message to the frontend
         return JSONResponse(
             content={
                 "error": "Online prediction request quota exceeded. Please try again later."
             },
-            status_code=429  # HTTP status code for "Too Many Requests"
+            status_code=429
         )
 
 # Transcribe audio input
