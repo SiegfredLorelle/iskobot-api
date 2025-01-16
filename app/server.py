@@ -10,6 +10,8 @@ from app.database.vectorstore import initialize_vectorstore
 from app.models.QueryRequest import QueryRequest
 from app.models.QueryResponse import QueryResponse
 from app.transcripts_processing.transcriber import transcribe_audio
+from app.utils.retry_with_backoff import retry_with_backoff
+from google.api_core.exceptions import ResourceExhausted
 import os
 import tempfile
 import requests
