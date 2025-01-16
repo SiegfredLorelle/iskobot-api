@@ -1,5 +1,5 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException
-from fastapi.responses import RedirectResponse, JSONResponse
+from fastapi.responses import RedirectResponse, JSONResponse, FileResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from langserve import add_routes
 from langchain_google_vertexai import VertexAI
@@ -103,26 +103,32 @@ async def get_answers_from_query(request: QueryRequest):
 async def transcribe_speech(audio_file: UploadFile = File(...)):
     return await transcribe_audio(audio_file)
 
-@app.post("/generate_speech")
+# /speech endpoint
+@app.post("/speech")
 async def generate_speech(message: Message):
     try:
         text = message.text
 
-        # Create a temporary file for the reference audio
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_audio_file:
-            reference_audio_url = "https://github.com/overtheskyy/iskobot-voice/blob/main/iskobot.wav?raw=true"
+        # Create a temporary in-memory file for the reference audio
+        reference_audio_url = "https://github.com/overtheskyy/iskobot-voice/blob/main/iskobot.wav?raw=true"
+        with tempfile.NamedTemporaryFile(suffix=".wav") as temp_audio_file:
             download_audio(reference_audio_url, temp_audio_file.name)
 
             # Generate speech from the provided text
             audio_output = generate_speech_from_text(text, temp_audio_file.name)
 
-        # Delete the temporary file after use
-        os.remove(temp_audio_file.name)
+            # Load the audio file into memory
+            with open(audio_output[1], "rb") as f:
+                audio_data = f.read()
 
-        return {audio_output}
+        # Return audio data directly as a binary response
+        return Response(content=audio_data, media_type="audio/wav")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
 def download_audio(url: str, local_path: str) -> None:
     try:
         response = requests.get(url)
@@ -142,7 +148,7 @@ def generate_speech_from_text(text: str, reference_audio_path: str) -> str:
 
     if not os.path.exists(reference_audio_path):
         raise FileNotFoundError(f"Reference audio file not found at: {reference_audio_path}")
-    
+        
     try:
         result = client.predict(
             text,
