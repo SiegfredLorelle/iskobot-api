@@ -1,6 +1,6 @@
-from app.database import RateLimitedEmbeddings
+from app.database.RateLimitedEmbeddings import RateLimitedEmbeddings
 from langchain_community.vectorstores.pgvector import PGVector
-from .connector import get_db_connection
+from app.database.connector import get_db_connection
 from langchain_google_vertexai import VertexAIEmbeddings
 
 def initialize_vectorstore(for_ingestion=False):

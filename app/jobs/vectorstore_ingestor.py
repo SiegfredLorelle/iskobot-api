@@ -1,5 +1,6 @@
 from app.document_processing.preprocess_documents import preprocess_document
 from app.database.vectorstore import initialize_vectorstore
+from app.scraper.process_web_sources import process_web_sources
 from app.storage.GCSHandler import GCSHandler
 from app.document_processing.chunking import create_chunks
 from tqdm import tqdm
@@ -15,9 +16,9 @@ def main():
     # Set up PGVector instance
     store = initialize_vectorstore(for_ingestion=True)
 
-    # Process each file
+    # Process files from GCS
     all_chunks = []
-    for file in tqdm(supported_files, desc="Processing files"):
+    for file in tqdm(supported_files, desc="Processing GCS files"):
         try:
             print(f"\nProcessing: {file.name}")
             file_type = file.name.split(".")[-1].lower()
@@ -27,6 +28,21 @@ def main():
             all_chunks.extend(chunks)
         except Exception as e:
             print(f"Error processing {file.name}: {str(e)}")
+
+    # Process web sources
+    web_sources = [
+        "https://sites.google.com/view/pupous",
+        "https://pupsinta.freshservice.com/support/solutions",
+        "https://www.pup.edu.ph/"
+        # Add more URLs as needed
+    ]
+    
+    print("\nProcessing web sources")
+    web_documents = process_web_sources(web_sources)
+    for doc in web_documents:
+        chunks = create_chunks(doc.page_content, doc.metadata)
+        all_chunks.extend(chunks)
+    print(f"Created {len(chunks)} chunks from web sources")
 
     # Store chunks in the database
     print("\nStoring chunks to the database")
