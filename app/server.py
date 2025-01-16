@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.responses import RedirectResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from langserve import add_routes
@@ -10,8 +10,16 @@ from app.database.vectorstore import initialize_vectorstore
 from app.models.QueryRequest import QueryRequest
 from app.models.QueryResponse import QueryResponse
 from app.transcripts_processing.transcriber import transcribe_audio
+import os
+import tempfile
+import requests
+from pydantic import BaseModel
+from gradio_client import Client
 
 app = FastAPI()
+
+class Message(BaseModel):
+    text: str
 
 # CORS Middleware setup
 app.add_middleware(
@@ -23,7 +31,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["GET", "POST"],
     allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
-)
+)   
 
 # (1) Initialize VectorStore
 vectorstore = initialize_vectorstore()
@@ -94,6 +102,62 @@ async def get_answers_from_query(request: QueryRequest):
 @app.post("/transcribe")
 async def transcribe_speech(audio_file: UploadFile = File(...)):
     return await transcribe_audio(audio_file)
+
+@app.post("/generate_speech")
+async def generate_speech(message: Message):
+    try:
+        text = message.text
+
+        # Create a temporary file for the reference audio
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_audio_file:
+            reference_audio_url = "https://github.com/overtheskyy/iskobot-voice/blob/main/iskobot.wav?raw=true"
+            download_audio(reference_audio_url, temp_audio_file.name)
+
+            # Generate speech from the provided text
+            audio_output = generate_speech_from_text(text, temp_audio_file.name)
+
+        # Delete the temporary file after use
+        os.remove(temp_audio_file.name)
+
+        return {audio_output}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+def download_audio(url: str, local_path: str) -> None:
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+
+        with open(local_path, 'wb') as file:
+            file.write(response.content)
+        print(f"Audio file downloaded successfully to {local_path}")
+    except requests.exceptions.RequestException as e:
+        raise Exception(f"Failed to download audio: {str(e)}")
+
+def generate_speech_from_text(text: str, reference_audio_path: str) -> str:
+    """
+    Generate speech from the provided text using a reference audio sample.
+    """
+    client = Client("https://coqui-xtts.hf.space/--replicas/5891u/")
+
+    if not os.path.exists(reference_audio_path):
+        raise FileNotFoundError(f"Reference audio file not found at: {reference_audio_path}")
+    
+    try:
+        result = client.predict(
+            text,
+            "en",
+            reference_audio_path,
+            "",
+            False,
+            False,
+            True,
+            True,
+            fn_index=1
+        )
+        return result
+    except Exception as e:
+        raise Exception(f"Error occurred while generating speech: {str(e)}")
 
 # Add routes for the chain
 add_routes(app, chain)
