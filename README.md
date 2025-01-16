@@ -1,5 +1,5 @@
 # Iskobot Chatbot API
-
+>  Chatbot designed to assist computer engineering students
 ---
 
 ## Setup and Requirements
@@ -64,34 +64,23 @@ curl -X 'POST' \
 }'
 ```
 
-```bash
-# Sample transcribing on prod
-curl -X POST \
-"https://run-rag-116711660246.asia-east1.run.app/transcribe" \
--H "Content-Type: application/json" \
--d '{
-  "gcs_uri": "gs://project-iskobot-voice-queries/audio/1.wav",
-  "gcs_output_folder": "gs://project-iskobot-voice-queries/transcripts"
-}'
-```
-
-```bash
-# Sample transcribing locally
-curl -X POST \
-'http://localhost:8080/transcribe' \
--H "Content-Type: application/json" \
--d '{
-  "gcs_uri": "gs://project-iskobot-voice-queries/audio/1.wav",
-  "gcs_output_folder": "gs://project-iskobot-voice-queries/transcripts"
-}'
-```
-
-
 ## Experiment with Pipeline
 [Iskobot Chatbot API](https://run-rag-116711660246.asia-east1.run.app)
 
 
 ## Deploy to Cloud Run
+- Export your .env
+```bash
+# For example:
+REGION=asia-east1
+DB_INSTANCE_NAME=your-db-instance
+DB_USER=your-db-user
+DB_NAME=your-database-name
+DB_PASS=your-secure-password
+GCS_BUCKET_NAME=your-bucket-name-123
+GROQ_API_KEY=your-groq-api-key-123
+```
+
 ```bash
 gcloud run deploy <APP_NAME> \
   --source . \

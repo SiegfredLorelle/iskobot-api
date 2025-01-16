@@ -12,11 +12,6 @@ from app.models.QueryResponse import QueryResponse
 from app.transcripts_processing.transcriber import transcribe_audio
 from app.utils.retry_with_backoff import retry_with_backoff
 from google.api_core.exceptions import ResourceExhausted
-import os
-import tempfile
-import requests
-from pydantic import BaseModel
-from gradio_client import Client
 
 app = FastAPI()
 
@@ -70,7 +65,7 @@ Your answer: """)
 
 # (4) Initialize LLM
 llm = VertexAI(
-    model_name="gemini-1.5-pro-002",
+    model_name="gemini-1.5-flash-002",
     temperature=0.2,
     max_output_tokens=500,
     top_k=40,
@@ -96,9 +91,21 @@ async def redirect_root_to_docs():
 # Handle query requests
 @app.post("/query", response_model=QueryRequest)
 async def get_answers_from_query(request: QueryRequest):
-    answer = await chain.ainvoke(request.query)
-    response = QueryResponse(response=answer)
-    return JSONResponse(content=response.dict())
+    async def invoke_chain():
+        return await chain.ainvoke(request.query)
+
+    try:
+        answer = await retry_with_backoff(invoke_chain)
+        response = QueryResponse(response=answer)
+        return JSONResponse(content=response.dict())
+    except ResourceExhausted as e:
+        print(f"Error: {e}")
+        return JSONResponse(
+            content={
+                "error": "Online prediction request quota exceeded. Please try again later."
+            },
+            status_code=429
+        )
 
 # Transcribe audio input
 @app.post("/transcribe")

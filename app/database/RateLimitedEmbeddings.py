@@ -1,6 +1,6 @@
 from tenacity import retry, wait_exponential, stop_after_attempt
 from langchain.embeddings.base import Embeddings
-
+import time
 
 class RateLimitedEmbeddings(Embeddings):
     """Custom embeddings class with improved rate limiting capabilities."""
@@ -10,7 +10,7 @@ class RateLimitedEmbeddings(Embeddings):
         self.base_embeddings = base_embeddings
         self.for_ingestion = for_ingestion
         self.batch_size = batch_size
-        self.base_delay = base_delay    
+        self.base_delay = base_delay
 
     @retry(wait=wait_exponential(multiplier=2, min=4, max=60),
            stop=stop_after_attempt(5))
