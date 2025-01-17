@@ -17,6 +17,7 @@ import tempfile
 import requests
 from pydantic import BaseModel
 from gradio_client import Client
+from app.config import Config
 
 app = FastAPI()
 
@@ -120,6 +121,10 @@ async def transcribe_speech(audio_file: UploadFile = File(...)):
 # /speech endpoint
 @app.post("/speech")
 async def generate_speech(message: Message):
+    if not Config.CONQUI_XTTS_ID:
+        # Skip processing and return 204 No Content
+        return Response(status_code=204)
+
     try:
         text = message.text
 
@@ -158,7 +163,7 @@ def generate_speech_from_text(text: str, reference_audio_path: str) -> str:
     """
     Generate speech from the provided text using a reference audio sample.
     """
-    client = Client("https://coqui-xtts.hf.space/--replicas/5891u/")
+    client = Client(f"https://coqui-xtts.hf.space/--replicas/{Config.CONQUI_XTTS_ID}/")
 
     if not os.path.exists(reference_audio_path):
         raise FileNotFoundError(f"Reference audio file not found at: {reference_audio_path}")
