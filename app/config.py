@@ -10,3 +10,4 @@ class Config:
     DB_NAME = os.getenv("DB_NAME", "")
     DB_PASS = os.getenv("DB_PASS", "")
     GCS_BUCKET_NAME = os.getenv("GCS_BUCKET_NAME", "")
+    CONQUI_XTTS_ID = os.getenv("CONQUI_XTTS_ID", "")
