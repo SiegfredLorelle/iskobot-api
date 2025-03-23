@@ -30,6 +30,8 @@ gradio-client = "^1.5.4"
 websockets = "11.0.3"
 bs4 = "^0.0.2"
 google-generativeai = "^0.8.4"
+psycopg2-binary = "^2.9.10"
+supabase = "^2.14.0"
 
 
 [tool.poetry.group.dev.dependencies]
