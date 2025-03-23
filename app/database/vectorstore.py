@@ -9,7 +9,7 @@ def initialize_vectorstore(for_ingestion=False):
     """Initialize the vector store with improved rate limiting for ingestion."""
     # Default embedding function
     embedding_function = GoogleGenerativeAIEmbeddings(
-        model="models/gemini-embedding-exp-03-07",
+        model="models/text-embedding-004",
         google_api_key = Config.GEMINI_API_KEY
     )
     if for_ingestion:
