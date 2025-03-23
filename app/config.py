@@ -17,3 +17,4 @@ class Config:
     DB_PORT = os.getenv("DB_PORT", "")
 
     CONQUI_XTTS_ID = os.getenv("CONQUI_XTTS_ID", "")
+    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
