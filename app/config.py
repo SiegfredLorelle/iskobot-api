@@ -16,5 +16,10 @@ class Config:
     DB_HOST = os.getenv("DB_HOST", "")
     DB_PORT = os.getenv("DB_PORT", "")
 
+    # Supabase
+    SUPABASE_URL = os.getenv("SUPABASE_URL", "")
+    SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
+    SUPABASE_BUCKET_NAME = os.getenv("SUPABASE_BUCKET_NAME", "")
+
     CONQUI_XTTS_ID = os.getenv("CONQUI_XTTS_ID", "")
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
