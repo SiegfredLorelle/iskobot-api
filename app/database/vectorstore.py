@@ -6,7 +6,7 @@ import google.generativeai as genai
 def initialize_vectorstore(for_ingestion=False):
     """Initialize the vector store with improved rate limiting for ingestion."""
     # Default embedding function
-    genai.configure(api_key="GEMINI_API_KEY")
+    genai.configure(api_key="AIzaSyAj3zJJttO6dtjC8NIybsozUHcnKgX7eAQ")
     def embedding_function(text):
         result = genai.models.embed_content(
             model="gemini-embedding-exp-03-07",
@@ -24,7 +24,7 @@ def initialize_vectorstore(for_ingestion=False):
     
     # Ensure PGVector still gets a valid embedding function
     return PGVector(
-        connection_string="postgresql+pg8000://",
+        connection_string="postgresql+psycopg2://",
         use_jsonb=True,
         engine_args=dict(
             creator=get_db_connection,
@@ -32,3 +32,14 @@ def initialize_vectorstore(for_ingestion=False):
         embedding_function=embedding_function,
         pre_delete_collection=for_ingestion
     )
+
+
+
+# Run the test
+if __name__ == "__main__":
+    # Initialize the vector store
+    try:
+        vs = initialize_vectorstore()
+        print(f"Vetor Store initialized!")
+    except Exception as e:
+        print(f"Error initializing vector store: {e}")
