@@ -1,13 +1,13 @@
-from app.document_processing.preprocess_documents import preprocess_document
+from app.document_processing.preprocess_documents import preprocess_document, SupabaseBlob
 from app.database.vectorstore import initialize_vectorstore
 from app.scraper.process_web_sources import process_web_sources
-from app.storage.GCSHandler import GCSHandler
+from app.storage.supabase_storage_handler import SupabaseStorageHandler
 from app.document_processing.chunking import create_chunks
 from tqdm import tqdm
 
 def main():
-    # Initialize GCS handler
-    gcs_handler = GCSHandler()
+    # Initialize storage handler
+    gcs_handler = SupabaseStorageHandler()
     
     # List all supported files
     supported_files = gcs_handler.list_files_by_extension(["pdf", "docx", "pptx"])
@@ -18,16 +18,20 @@ def main():
 
     # Process files from GCS
     all_chunks = []
-    for file in tqdm(supported_files, desc="Processing GCS files"):
+    for file in tqdm(supported_files, desc="Processing files in storage"):
         try:
-            print(f"\nProcessing: {file.name}")
-            file_type = file.name.split(".")[-1].lower()
-            result = preprocess_document(file, file_type)
+            file_name = file['name']
+            # print(f"\nProcessing: {file_name}")
+            file_type = file_name.split(".")[-1].lower()
+            # Download file
+            file_content = gcs_handler.bucket.download(file_name)
+            blob = SupabaseBlob(file_content, file_name)
+            result = preprocess_document(blob, file_type)
             chunks = create_chunks(result["text"], result["metadata"])
-            print(f"Created {len(chunks)} chunks from {file.name}")
+            print(f"Created {len(chunks)} chunks from {file_name}\n")
             all_chunks.extend(chunks)
         except Exception as e:
-            print(f"Error processing {file.name}: {str(e)}")
+            print(f"Error processing {file_name}: {str(e)}")
 
     # Process web sources
     web_sources = [

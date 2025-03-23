@@ -2,7 +2,7 @@ from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.responses import RedirectResponse, JSONResponse, FileResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from langserve import add_routes
-from langchain_google_vertexai import VertexAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.runnables import RunnablePassthrough, RunnableParallel
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import PromptTemplate
@@ -70,12 +70,13 @@ Question: {query}
 Your answer: """)
 
 # (4) Initialize LLM
-llm = VertexAI(
-    model_name="gemini-1.5-flash-002",
+llm = ChatGoogleGenerativeAI(
+    model="gemini-1.5-flash",
     temperature=0.2,
     max_output_tokens=500,
     top_k=40,
-    top_p=0.95
+    top_p=0.95,
+    google_api_key=Config.GEMINI_API_KEY
 )
 
 # (5) Chain everything together
