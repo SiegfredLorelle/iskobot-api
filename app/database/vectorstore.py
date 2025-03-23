@@ -1,14 +1,18 @@
 from app.database.RateLimitedEmbeddings import RateLimitedEmbeddings
 from langchain_community.vectorstores.pgvector import PGVector
 from app.database.connector import get_db_connection
-from langchain_google_vertexai import VertexAIEmbeddings
+import google.generativeai as genai
 
 def initialize_vectorstore(for_ingestion=False):
     """Initialize the vector store with improved rate limiting for ingestion."""
     # Default embedding function
-    embedding_function = VertexAIEmbeddings(
-            model_name="text-embedding-005"
+    genai.configure(api_key="GEMINI_API_KEY")
+    def embedding_function(text):
+        result = genai.models.embed_content(
+            model="gemini-embedding-exp-03-07",
+            contents=text
         )
+        return result.embeddings
 
     if for_ingestion:
         embedding_function = RateLimitedEmbeddings(
