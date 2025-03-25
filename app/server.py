@@ -7,17 +7,22 @@ from langchain_core.runnables import RunnablePassthrough, RunnableParallel
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import PromptTemplate
 from app.database.vectorstore import initialize_vectorstore
-from app.models.QueryRequest import QueryRequest
-from app.models.QueryResponse import QueryResponse
+from app.models.Query import Query, QueryRequest, QueryResponse
 from app.transcripts_processing.transcriber import transcribe_audio
 from app.utils.retry_with_backoff import retry_with_backoff
 from google.api_core.exceptions import ResourceExhausted
+from supabase import create_client, Client
 import os
 import tempfile
 import requests
 from pydantic import BaseModel
 from gradio_client import Client
 from app.config import Config
+
+supabase: Client = create_client(
+    Config.SUPABASE_URL,
+    Config.SUPABASE_KEY
+)
 
 app = FastAPI()
 
@@ -104,6 +109,16 @@ async def get_answers_from_query(request: QueryRequest):
     try:
         answer = await retry_with_backoff(invoke_chain)
         response = QueryResponse(response=answer)
+        # Log query and response to Supabase
+        log_data = {
+            "query": request.query,
+            "response": response.response
+        }
+        supabase_response = supabase.table("query_logs").insert(log_data).execute()
+
+        if not supabase_response.data:
+            print("Warning: Failed to log query and response to Supabase")
+
         return JSONResponse(content=response.dict())
     except ResourceExhausted as e:
         print(f"Error: {e}")
