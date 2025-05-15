@@ -69,9 +69,7 @@ knowledge_bank_retriever = vectorstore.as_retriever(
     }
 ) | format_docs
 
-# (3) Removed prompt template
-
-# (4) Initialize LLM
+# (3) Initialize LLM
 llm = ChatGoogleGenerativeAI(
     model="gemini-1.5-flash",
     temperature=0.2,
@@ -81,13 +79,12 @@ llm = ChatGoogleGenerativeAI(
     google_api_key=Config.GEMINI_API_KEY
 )
 
-# (5) Chain everything together
+# (4) Chain everything together
 chain = (
     RunnableParallel({
         "knowledge_bank": knowledge_bank_retriever,
         "query": RunnablePassthrough()
     })
-    # | prompt_template  # Removed
     | llm
     | StrOutputParser()
 )
