@@ -16,13 +16,15 @@ import os
 import tempfile
 import requests
 from pydantic import BaseModel
-from gradio_client import Client
+from gradio_client import Client, handle_file
 from app.config import Config
 
 supabase: Client = create_client(
     Config.SUPABASE_URL,
     Config.SUPABASE_KEY
 )
+
+xtts_client = Client("jimmyvu/Coqui-Xtts-Demo")
 
 app = FastAPI()
 
@@ -134,71 +136,45 @@ async def get_answers_from_query(request: QueryRequest):
 async def transcribe_speech(audio_file: UploadFile = File(...)):
     return await transcribe_audio(audio_file)
 
-# /speech endpoint
+# Generate voice output
 @app.post("/speech")
 async def generate_speech(message: Message):
-    if not Config.CONQUI_XTTS_ID:
-        # Skip processing and return 204 No Content
-        return Response(status_code=204)
-
     try:
-        text = message.text
+        print(f"Generating speech for: {message.text}")
 
-        # Create a temporary in-memory file for the reference audio
-        reference_audio_url = "https://github.com/overtheskyy/iskobot-voice/blob/main/iskobot.wav?raw=true"
-        with tempfile.NamedTemporaryFile(suffix=".wav") as temp_audio_file:
-            download_audio(reference_audio_url, temp_audio_file.name)
-
-            # Generate speech from the provided text
-            audio_output = generate_speech_from_text(text, temp_audio_file.name)
-
-            # Load the audio file into memory
-            with open(audio_output[1], "rb") as f:
-                audio_data = f.read()
-
-        # Return audio data directly as a binary response
-        return Response(content=audio_data, media_type="audio/wav")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    
-def download_audio(url: str, local_path: str) -> None:
-    try:
-        response = requests.get(url)
-        response.raise_for_status()
-
-        with open(local_path, 'wb') as file:
-            file.write(response.content)
-        print(f"Audio file downloaded successfully to {local_path}")
-    except requests.exceptions.RequestException as e:
-        raise Exception(f"Failed to download audio: {str(e)}")
-
-def generate_speech_from_text(text: str, reference_audio_path: str) -> str:
-    """
-    Generate speech from the provided text using a reference audio sample.
-    """
-    client = Client(f"https://coqui-xtts.hf.space/--replicas/{Config.CONQUI_XTTS_ID}/")
-
-    if not os.path.exists(reference_audio_path):
-        raise FileNotFoundError(f"Reference audio file not found at: {reference_audio_path}")
-        
-    try:
-        result = client.predict(
-            text,
-            "en",
-            reference_audio_path,
-            "",
-            False,
-            False,
-            True,
-            True,
-            fn_index=1
+        # Call the /generate_speech endpoint (correct one!)
+        result = xtts_client.predict(
+            input_text=message.text,
+            speaker_reference_audio=handle_file("https://github.com/overtheskyy/iskobot-voice/raw/main/iskobot.wav"),
+            enhance_speech=True,
+            temperature=0.65,
+            top_p=0.80,
+            top_k=50,
+            repetition_penalty=2.0,
+            language="English",
+            api_name="/generate_speech"  # Important!
         )
-        return result
+
+        #Fix: unpack tuple if needed
+        if isinstance(result, tuple):
+            file_path = result[0]
+        else:
+            file_path = result
+
+        # Return audio if valid
+        if isinstance(file_path, str) and os.path.exists(file_path):
+            with open(file_path, "rb") as f:
+                audio_data = f.read()
+            return Response(content=audio_data, media_type="audio/wav")
+        else:
+            print("Unexpected response from TTS client:", result)
+            raise Exception("Speech generation failed or returned invalid file path.")
+
     except Exception as e:
-        raise Exception(f"Error occurred while generating speech: {str(e)}")
+        print("Error in /speech:", e)
+        return Response(content=str(e), status_code=500)
+    
+    # TODO: add quota error handler
 
 # Add routes for the chain
 add_routes(app, chain)
