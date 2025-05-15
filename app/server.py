@@ -171,45 +171,44 @@ async def get_answers_from_query(request: QueryRequest):
 async def transcribe_speech(audio_file: UploadFile = File(...)):
     return await transcribe_audio(audio_file)
 
-# Generate voice output (commented out)
-# @app.post("/speech")
-# async def generate_speech(message: Message):
-#     try:
-#         print(f"Generating speech for: {message.text}")
+@app.post("/speech")
+async def generate_speech(message: Message):
+    try:
+        print(f"Generating speech for: {message.text}")
 
-#         # Call the /generate_speech endpoint (correct one!)
-#         result = xtts_client.predict(
-#             input_text=message.text,
-#             speaker_reference_audio=handle_file("https://github.com/overtheskyy/iskobot-voice/raw/main/iskobot.wav"),
-#             enhance_speech=True,
-#             temperature=0.65,
-#             top_p=0.80,
-#             top_k=50,
-#             repetition_penalty=2.0,
-#             language="English",
-#             api_name="/generate_speech"
-#         )
+        # Call the /generate_speech endpoint (correct one!)
+        result = xtts_client.predict(
+            input_text=message.text,
+            speaker_reference_audio=handle_file("https://github.com/overtheskyy/iskobot-voice/raw/main/iskobot.wav"),
+            enhance_speech=True,
+            temperature=0.65,
+            top_p=0.80,
+            top_k=50,
+            repetition_penalty=2.0,
+            language="English",
+            api_name="/generate_speech"
+        )
 
-#         #Fix: unpack tuple if needed
-#         if isinstance(result, tuple):
-#             file_path = result[0]
-#         else:
-#             file_path = result
+        #Fix: unpack tuple if needed
+        if isinstance(result, tuple):
+            file_path = result[0]
+        else:
+            file_path = result
 
-#         # Return audio if valid
-#         if isinstance(file_path, str) and os.path.exists(file_path):
-#             with open(file_path, "rb") as f:
-#                 audio_data = f.read()
-#             return Response(content=audio_data, media_type="audio/wav")
-#         else:
-#             print("Unexpected response from TTS client:", result)
-#             raise Exception("Speech generation failed or returned invalid file path.")
+        # Return audio if valid
+        if isinstance(file_path, str) and os.path.exists(file_path):
+            with open(file_path, "rb") as f:
+                audio_data = f.read()
+            return Response(content=audio_data, media_type="audio/wav")
+        else:
+            print("Unexpected response from TTS client:", result)
+            raise Exception("Speech generation failed or returned invalid file path.")
 
-#     except Exception as e:
-#         print("Error in /speech:", e)
-#         return Response(content=str(e), status_code=500)
+    except Exception as e:
+        print("Error in /speech:", e)
+        return Response(content=str(e), status_code=500)
     
-#     # TODO: add quota error handler
+    # TODO: add quota error handler
 
 # Add routes for the chain
 add_routes(app, chain)
