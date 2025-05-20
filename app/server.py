@@ -5,7 +5,6 @@ from langserve import add_routes
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.runnables import RunnablePassthrough, RunnableParallel
 from langchain_core.output_parsers import StrOutputParser
-#from langchain_core.prompts import PromptTemplate  # Removed
 from app.database.vectorstore import initialize_vectorstore
 from app.models.Query import Query, QueryRequest, QueryResponse
 from app.transcripts_processing.transcriber import transcribe_audio
@@ -33,10 +32,6 @@ app = FastAPI()
 class Message(BaseModel):
     text: str
     
-class QueryRequest(BaseModel):
-    query: str
-    thread_id: str | None = None
-
 # CORS Middleware setup
 app.add_middleware(
     CORSMiddleware,
@@ -80,11 +75,25 @@ llm = ChatGoogleGenerativeAI(
 )
 
 # (4) Chain everything together
+def build_prompt(inputs):
+    return [
+        {"role": "system", "content": (
+            "You are Iskobot, an expert in Computer Engineering.\n"
+            "Refer to the provided knowledge bank to answer questions.\n"
+            "Provide a brief and clear answer.\n"
+            "If the answer isn't clear from your knowledge bank, acknowledge that you don't have sufficient information.\n"
+            "If the question is asked in a different language, translate your answer into the same language.\n"
+            f"\nKnowledge Bank:\n{inputs['knowledge_bank']}"
+        )},
+        {"role": "user", "content": inputs["query"]}
+    ]
+
 chain = (
     RunnableParallel({
         "knowledge_bank": knowledge_bank_retriever,
         "query": RunnablePassthrough()
     })
+    | build_prompt
     | llm
     | StrOutputParser()
 )
