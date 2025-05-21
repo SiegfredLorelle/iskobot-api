@@ -5,7 +5,6 @@ class QueryResponse(BaseModel):
 
 class QueryRequest(BaseModel):
     query: str
-    thread_id: str | None = None
 
 class Query(BaseModel):
     query: str
