@@ -31,7 +31,6 @@ supabase = "^2.14.0"
 langchain-google-genai = "^2.1.1"
 langchain = "^0.3.21"
 langchain-community = "^0.3.20"
-langgraph = "^0.4.5"
 
 
 [tool.poetry.group.dev.dependencies]
