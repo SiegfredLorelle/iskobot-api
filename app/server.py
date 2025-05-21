@@ -24,8 +24,6 @@ supabase: Client = create_client(
     Config.SUPABASE_KEY
 )
 
-xtts_client = Client("jimmyvu/Coqui-Xtts-Demo")
-
 app = FastAPI()
 
 class Message(BaseModel):
@@ -141,6 +139,7 @@ async def transcribe_speech(audio_file: UploadFile = File(...)):
 async def generate_speech(message: Message):
     try:
         print(f"Generating speech for: {message.text}")
+        xtts_client = Client("jimmyvu/Coqui-Xtts-Demo")  # Instantiate per request
 
         # Call the /generate_speech endpoint (correct one!)
         result = xtts_client.predict(
