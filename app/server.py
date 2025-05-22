@@ -82,7 +82,7 @@ Your answer: """
 
 # (4) Initialize LLM
 llm = ChatGoogleGenerativeAI(
-    model="gemini-1.5-flash",
+    model="gemini-2.0-flash",
     temperature=0.2,
     max_output_tokens=500,
     top_k=40,
