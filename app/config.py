@@ -23,3 +23,4 @@ class Config:
 
     CONQUI_XTTS_ID = os.getenv("CONQUI_XTTS_ID", "")
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+    ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "")

@@ -20,13 +20,20 @@ from gradio_client import Client, handle_file
 from app.config import Config
 from app.routes.auth import router as auth_router
 from app.routes.kms import router as kms_router
+from elevenlabs.client import ElevenLabs
 
 supabase: Client = create_client(
     Config.SUPABASE_URL,
     Config.SUPABASE_KEY
 )
 
+elevenlabs = ElevenLabs(
+    api_key=Config.ELEVENLABS_API_KEY
+)
+
 app = FastAPI()
+
+# xtts_client = Client("jimmyvu/Coqui-Xtts-Demo")
 
 class Message(BaseModel):
     text: str
@@ -67,7 +74,6 @@ knowledge_bank_retriever = vectorstore.as_retriever(
     }
 ) | format_docs
 
-# (3) Create prompt template
 # (3) Create prompt template
 prompt_template = PromptTemplate.from_template(
     """You're **Iskobot**, a helpful and knowledgeable assistant in Computer Engineering.
@@ -157,41 +163,21 @@ async def transcribe_speech(audio_file: UploadFile = File(...)):
 async def generate_speech(message: Message):
     try:
         print(f"Generating speech for: {message.text}")
-        xtts_client = Client("jimmyvu/Coqui-Xtts-Demo")  # Instantiate per request
 
-        # Call the /generate_speech endpoint (correct one!)
-        result = xtts_client.predict(
-            input_text=message.text,
-            speaker_reference_audio=handle_file("https://github.com/overtheskyy/iskobot-voice/raw/main/iskobot.wav"),
-            enhance_speech=True,
-            temperature=0.65,
-            top_p=0.80,
-            top_k=50,
-            repetition_penalty=2.0,
-            language="English",
-            api_name="/generate_speech"  # Important!
+        audio = elevenlabs.text_to_speech.convert(
+            text=message.text,
+            voice_id="zZLmKvCp1i04X8E0FJ8B",
+            model_id="eleven_multilingual_v2",
+            output_format="mp3_44100_128",
         )
+        
+        audio_bytes = b"".join(audio)  # consume generator to bytes
 
-        #Fix: unpack tuple if needed
-        if isinstance(result, tuple):
-            file_path = result[0]
-        else:
-            file_path = result
-
-        # Return audio if valid
-        if isinstance(file_path, str) and os.path.exists(file_path):
-            with open(file_path, "rb") as f:
-                audio_data = f.read()
-            return Response(content=audio_data, media_type="audio/wav")
-        else:
-            print("Unexpected response from TTS client:", result)
-            raise Exception("Speech generation failed or returned invalid file path.")
+        return Response(content=audio_bytes, media_type="audio/mpeg")
 
     except Exception as e:
         print("Error in /speech:", e)
         return Response(content=str(e), status_code=500)
-    
-    # TODO: add quota error handler
 
 # Add routes for the chain
 add_routes(app, chain)
