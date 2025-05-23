@@ -4,11 +4,17 @@ from app.scraper.process_web_sources import process_web_sources
 from app.storage.supabase_storage_handler import SupabaseStorageHandler
 from app.document_processing.chunking import create_chunks
 from tqdm import tqdm
+from app.config import Config
+from supabase import create_client, Client
 
 def run_vectorstore_ingestor():
     # Initialize storage handler
     gcs_handler = SupabaseStorageHandler()
-    
+
+    supabase: Client = create_client(
+    Config.SUPABASE_URL,
+    Config.SUPABASE_KEY
+)
     # List all supported files
     supported_files = gcs_handler.list_files_by_extension(["pdf", "docx", "pptx"])
     print(f"Number of files found: {len(supported_files)}")
@@ -34,12 +40,22 @@ def run_vectorstore_ingestor():
             print(f"Error processing {file_name}: {str(e)}")
 
     # Process web sources
-    web_sources = [
-        "https://sites.google.com/view/pupous",
-        "https://pupsinta.freshservice.com/support/solutions",
-        "https://www.pup.edu.ph/"
-        # Add more URLs as needed
-    ]
+    try:
+        response = supabase.table("rag_websites").select("url").execute()
+        web_sources = [row["url"] for row in response.data]
+    except Exception as e:
+        raise Exception(f"Ingestion failed: {e}")
+    
+    # Extract URLs into a list
+    web_sources = [item["url"] for item in response.data]
+
+    # Process web sources
+    # web_sources = [
+    #     "https://sites.google.com/view/pupous",
+    #     "https://pupsinta.freshservice.com/support/solutions",
+    #     "https://www.pup.edu.ph/"
+    #     # Add more URLs as needed
+    # ]
     
     print("\nProcessing web sources")
     web_documents = process_web_sources(web_sources)
