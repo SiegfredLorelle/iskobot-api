@@ -6,6 +6,7 @@ from app.document_processing.chunking import create_chunks
 from tqdm import tqdm
 from app.config import Config
 from supabase import create_client, Client
+from datetime import datetime, timezone
 
 def run_vectorstore_ingestor():
     # Initialize storage handler
@@ -48,6 +49,14 @@ def run_vectorstore_ingestor():
     
     # Extract URLs into a list
     web_sources = [item["url"] for item in response.data]
+
+    # Set last_scraped to current timestamptz
+    current_time = datetime.now(timezone.utc).isoformat()
+    for item in response.data:
+        if "url" in item:
+            supabase.table("rag_websites").update(
+                {"last_scraped": current_time}
+            ).eq("url", item["url"]).execute()
 
     # Process web sources
     # web_sources = [
