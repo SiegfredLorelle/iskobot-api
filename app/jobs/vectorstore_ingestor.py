@@ -5,7 +5,7 @@ from app.storage.supabase_storage_handler import SupabaseStorageHandler
 from app.document_processing.chunking import create_chunks
 from tqdm import tqdm
 
-def main():
+def run_vectorstore_ingestor():
     # Initialize storage handler
     gcs_handler = SupabaseStorageHandler()
     
@@ -48,6 +48,8 @@ def main():
         all_chunks.extend(chunks)
     print(f"Created {len(chunks)} chunks from web sources")
 
+    stats = {"total_chunks": len(all_chunks), "batches_saved": 0}
+    
     # Store chunks in the database
     print("\nStoring chunks to the database")
     if all_chunks:
@@ -58,13 +60,17 @@ def main():
                 texts = [chunk.page_content for chunk in batch]
                 metadatas = [chunk.metadata for chunk in batch]
                 ids = store.add_texts(texts=texts, metadatas=metadatas)
+                stats["batches_saved"] += 1
                 print(f"Successfully saved batch {i//batch_size + 1}/{(len(all_chunks) + batch_size - 1)//batch_size}")
+            
+            stats["avg_chunk_size"] = sum(len(c.page_content) for c in all_chunks) // len(all_chunks)
             print(f"Successfully saved all {len(all_chunks)} chunks to the database")
             print(f"Average chunk size: {sum(len(c.page_content) for c in all_chunks) / len(all_chunks):.0f} characters")
         except Exception as e:
             print(f"Error saving to database: {str(e)}")
     else:
         print("No chunks to save to the database")
+    return stats
 
 if __name__ == "__main__":
-    main()
+    run_vectorstore_ingestor()

@@ -20,6 +20,7 @@ from gradio_client import Client, handle_file
 from app.config import Config
 from app.routes.auth import router as auth_router
 from app.routes.kms import router as kms_router
+from app.routes.ingestor import router as ingestor_router
 from elevenlabs.client import ElevenLabs
 
 supabase: Client = create_client(
@@ -53,6 +54,7 @@ app.add_middleware(
 # Include authentication routes
 app.include_router(auth_router)
 app.include_router(kms_router)
+app.include_router(ingestor_router)
 
 # (1) Initialize VectorStore
 vectorstore = initialize_vectorstore()
