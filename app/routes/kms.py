@@ -14,6 +14,7 @@ import requests
 from bs4 import BeautifulSoup
 import asyncio
 import aiohttp
+from fastapi import Path
 
 # Initialize router
 router = APIRouter(prefix="/rag", tags=["RAG Management"])
@@ -52,6 +53,8 @@ class WebsiteResponse(BaseModel):
     created_at: datetime
     updated_at: Optional[datetime]
 
+class WebsiteCreate(BaseModel):
+    url: HttpUrl
 class VectorizationToggleRequest(BaseModel):
     vectorized: bool
 
@@ -193,68 +196,6 @@ async def get_user_files(
 
 
 ## Web Source Management Routes
-
-@router.post("/websites/add_initial", response_model=List[WebsiteResponse], status_code=status.HTTP_201_CREATED)
-async def add_initial_websites(
-    supabase: Client = Depends(get_supabase_client)
-):
-    """Adds a predefined list of web sources to the rag_web_sources table."""
-    initial_urls = [
-        "https://sites.google.com/view/pupous",
-        "https://pupsinta.freshservice.com/support/solutions",
-        "https://www.pup.edu.ph/"
-    ]
-    
-    web_sources_to_insert = []
-    current_utc_time = datetime.now(timezone.utc).isoformat(timespec='microseconds') + 'Z'
-
-    for url_str in initial_urls:
-        web_sources_to_insert.append({
-            "id": str(uuid.uuid4()),
-            "url": url_str,
-            "last_scraped": None,
-            "status": "queued",
-            "vectorized": False,
-            "error_message": None,
-            "created_at": current_utc_time,
-            "updated_at": current_utc_time, 
-        })
-
-    try:
-        db_response = supabase.table("rag_websites").insert(web_sources_to_insert).execute()
-
-        if hasattr(db_response, 'error') and db_response.error:
-            logger.error(f"Supabase error inserting web sources: {db_response.error.message}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to insert web sources: {db_response.error.message}"
-            )
-        
-        inserted_websites = []
-        if db_response.data:
-            for record in db_response.data:
-                inserted_websites.append(WebsiteResponse(
-                    id=record["id"],
-                    url=record["url"],
-                    last_scraped=datetime.fromisoformat(record["last_scraped"].replace('Z', '+00:00')) if record.get("last_scraped") else None,
-                    status=record["status"],
-                    vectorized=record["vectorized"],
-                    error_message=record["error_message"],
-                    created_at=datetime.fromisoformat(record["created_at"].replace('Z', '+00:00')),
-                    updated_at=datetime.fromisoformat(record["updated_at"].replace('Z', '+00:00')) if record.get("updated_at") else None
-                ))
-        
-        return inserted_websites
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error adding initial web sources: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to add initial web sources: {e}"
-        )
-
 @router.get("/websites", response_model=List[WebsiteResponse])
 async def get_all_websites(
     supabase: Client = Depends(get_supabase_client)
@@ -292,4 +233,66 @@ async def get_all_websites(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Could not retrieve web sources: {e}"
+        )
+    
+
+@router.delete("/websites/{website_id}", status_code=204)
+async def delete_website(
+    website_id: str = Path(..., description="The ID of the website to delete"),
+    supabase: Client = Depends(get_supabase_client)
+):
+    """Delete a website from the rag_websites table."""
+    try:
+        response = supabase.table("rag_websites").delete().eq("id", website_id).execute()
+
+        # If no records were deleted, raise 404
+        if not response.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Website not found"
+            )
+
+        return  # 204 No Content
+
+    except Exception as e:
+        logger.error(f"Error deleting website {website_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error deleting website: {str(e)}"
+        )
+    
+
+@router.post("/websites", status_code=201)
+async def add_website(
+    website: WebsiteCreate,
+    supabase: Client = Depends(get_supabase_client)
+):
+    try:
+        now = datetime.utcnow().isoformat()
+
+        new_website = {
+            "id": str(uuid.uuid4()),
+            "url": str(website.url),
+            "status": "pending",
+            "vectorized": False,
+            "created_at": now,
+            "updated_at": now,
+            "last_scraped": None,
+            "error_message": None,
+        }
+
+        response = supabase.table("rag_websites").insert(new_website).execute()
+
+        if not response.data:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to insert website"
+            )
+
+        return response.data[0]
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error adding website: {e}"
         )

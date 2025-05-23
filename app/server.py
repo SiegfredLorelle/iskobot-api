@@ -46,7 +46,7 @@ app.add_middleware(
         "https://iskobot-ui.vercel.app",
     ],
     allow_credentials=True,
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
 )
 
