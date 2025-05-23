@@ -6,7 +6,7 @@ from app.config import Config
 from app.models.auth import TokenPayload, UserResponse
 import logging
 
-logger = logging.getLogger(__name__)
+# logger = logging.getLogger(__name__)
 security = HTTPBearer()
 
 def get_supabase_client() -> Client:

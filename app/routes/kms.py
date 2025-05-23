@@ -63,7 +63,7 @@ ALLOWED_FILE_TYPES = {
     'image/jpeg', 'image/jpg', 'image/png', 'application/pdf'
 }
 
-MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
 
 def get_supabase_client() -> Client:
     """Dependency to get Supabase client"""
@@ -79,12 +79,7 @@ async def upload_files(
 ):
     """Upload multiple files to Supabase Storage and record metadata in rag_files table."""
     try:
-        if len(files) > 10:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Maximum 10 files allowed per upload"
-            )
-        
+
         uploaded_files = []
         
         for file in files:
@@ -106,7 +101,6 @@ async def upload_files(
             file_extension = file.filename.split('.')[-1] if '.' in file.filename else ''
             storage_filename = f"{file_id}.{file_extension}" 
             
-            logger.debug(f"Uploading to: iskobot-documents-2.0-lms-only, filename: {storage_filename}, content type: {file.content_type}")
             storage_response = supabase.storage.from_("iskobot-documents-2.0-lms-only").upload(
                 storage_filename,
                 file_content,
@@ -115,7 +109,6 @@ async def upload_files(
                     "upsert": False 
                 }
             )
-            logger.debug(f"Storage response: {storage_response}")
 
             if hasattr(storage_response, 'error') and storage_response.error:
                 raise HTTPException(
@@ -126,11 +119,13 @@ async def upload_files(
             file_record = {
                 "id": file_id,
                 "name": file.filename,
+                "storage_name": storage_filename,
                 "size": len(file_content),
                 "type": file.content_type,
                 "uploaded_at": datetime.now(timezone.utc).isoformat(),
-                "vectorized": False, 
+                "vectorized": False,
             }
+
             
             db_response = supabase.table("rag_files").insert(file_record).execute()
             
@@ -194,6 +189,52 @@ async def get_user_files(
         logger.error(f"Error retrieving files from rag_files table: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Could not retrieve files: {e}")
 
+
+@router.delete("/files/{file_id}", status_code=204)
+async def delete_file(
+    file_id: str = Path(..., description="The ID of the file to delete"),
+    supabase: Client = Depends(get_supabase_client)
+):
+    """Delete a file from the rag_files table and Supabase storage."""
+    try:
+        # Step 1: Get the file metadata
+        file_query = supabase.table("rag_files").select("name").eq("id", file_id).single().execute()
+        file_data = file_query.data
+
+        if not file_data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="File not found in database"
+            )
+
+        file_name = file_data["name"]
+
+        # Step 2: Delete from Supabase Storage
+        try:
+            file_query = supabase.table("rag_files").select("storage_name").eq("id", file_id).single().execute()
+            file_data = file_query.data
+            storage_name = file_data["storage_name"]
+            # Delete directly
+            supabase.storage.from_("iskobot-documents-2.0-lms-only").remove([storage_name])
+        except Exception as storage_err:
+            logger.warning(f"Storage delete warning for {file_name}: {storage_err}")
+
+        # Step 3: Delete metadata from rag_files table
+        db_response = supabase.table("rag_files").delete().eq("id", file_id).execute()
+        if not db_response.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="File metadata not found"
+            )
+
+        return  # 204 No Content
+
+    except Exception as e:
+        logger.error(f"Error deleting file {file_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error deleting file: {str(e)}"
+        )
 
 ## Web Source Management Routes
 @router.get("/websites", response_model=List[WebsiteResponse])

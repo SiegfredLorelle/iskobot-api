@@ -5,7 +5,7 @@ import logging
 from fastapi import HTTPException, UploadFile
 
 # Set up logging for debugging
-logging.basicConfig(level=logging.DEBUG)
+# logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 # Initialize Groq client

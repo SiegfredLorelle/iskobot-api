@@ -20,7 +20,7 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 # Security scheme
 security = HTTPBearer()
 
-logger = logging.getLogger(__name__)
+# logger = logging.getLogger(__name__)
 
 def get_supabase_client() -> Client:
     """Dependency to get Supabase client"""
@@ -67,7 +67,7 @@ async def sign_up(
         )
         
     except Exception as e:
-        logger.error(f"Sign up error: {str(e)}")
+        # logger.error(f"Sign up error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Registration failed: {str(e)}"
@@ -106,7 +106,7 @@ async def sign_in(
         )
         
     except Exception as e:
-        logger.error(f"Sign in error: {str(e)}")
+        # logger.error(f"Sign in error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password"
