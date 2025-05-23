@@ -73,7 +73,6 @@ def get_supabase_client() -> Client:
 async def upload_files(
     files: List[UploadFile] = File(...),
     supabase: Client = Depends(get_supabase_client)
-    # user: dict = Depends(get_current_user) # Uncomment if user authentication is required
 ):
     """Upload multiple files to Supabase Storage and record metadata in rag_files table."""
     try:
@@ -89,7 +88,7 @@ async def upload_files(
             if file.content_type not in ALLOWED_FILE_TYPES:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"File type {file.content_type} not allowed. Allowed types: JPEG, JPG, PNG, PDF"
+                    detail=f"File type {file.content_type} not allowed. Allowed types: DOCX, PDF, PPTX"
                 )
             
             file_content = await file.read()
@@ -104,6 +103,7 @@ async def upload_files(
             file_extension = file.filename.split('.')[-1] if '.' in file.filename else ''
             storage_filename = f"{file_id}.{file_extension}" 
             
+            logger.debug(f"Uploading to: iskobot-documents-2.0-lms-only, filename: {storage_filename}, content type: {file.content_type}")
             storage_response = supabase.storage.from_("iskobot-documents-2.0-lms-only").upload(
                 storage_filename,
                 file_content,
@@ -112,7 +112,8 @@ async def upload_files(
                     "upsert": False 
                 }
             )
-            
+            logger.debug(f"Storage response: {storage_response}")
+
             if hasattr(storage_response, 'error') and storage_response.error:
                 raise HTTPException(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -124,7 +125,6 @@ async def upload_files(
                 "name": file.filename,
                 "size": len(file_content),
                 "type": file.content_type,
-                "storage_path": storage_filename,
                 "uploaded_at": datetime.now(timezone.utc).isoformat(),
                 "vectorized": False, 
             }
@@ -152,7 +152,7 @@ async def upload_files(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"File upload error: {str(e)}")
+        logger.error(f"File upload error: {str(e)}") 
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="File upload failed"
