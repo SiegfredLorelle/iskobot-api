@@ -31,10 +31,11 @@ class SignInRequest(BaseModel):
 class UserResponse(BaseModel):
     id: str
     email: str
-    full_name: Optional[str] = None
-    display_name: Optional[str] = None
-    email_confirmed: bool = False
-    created_at: Optional[datetime] = None
+    full_name: Optional[str]
+    display_name: Optional[str]
+    email_confirmed: bool
+    created_at: datetime
+    role: str
 
 class AuthResponse(BaseModel):
     access_token: Optional[str] = None

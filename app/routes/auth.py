@@ -52,6 +52,23 @@ async def sign_up(
                 detail="Failed to create user account"
             )
         
+        # Fetch the user's role from the profiles table
+        user_id = response.user.id
+        profile = supabase.table('profiles') \
+                         .select('role') \
+                         .eq('user_id', user_id) \
+                         .execute()
+        
+        if not profile.data:
+            # Attempt to clean up orphaned user if profile creation failed
+            supabase.auth.admin.delete_user(user_id)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="User profile could not be created"
+            )
+        
+        role = profile.data[0]['role']
+        
         return AuthResponse(
             access_token=response.session.access_token if response.session else None,
             refresh_token=response.session.refresh_token if response.session else None,
@@ -61,7 +78,8 @@ async def sign_up(
                 full_name=response.user.user_metadata.get("full_name"),
                 display_name=response.user.user_metadata.get("display_name"),
                 email_confirmed=response.user.email_confirmed_at is not None,
-                created_at=response.user.created_at
+                created_at=response.user.created_at,
+                role=role
             ),
             message="User created successfully. Please check your email for verification."
         )
@@ -90,7 +108,21 @@ async def sign_in(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid email or password"
             )
+
+        # NEW: Get role from profiles table
+        profile = supabase.table('profiles') \
+                         .select('role') \
+                         .eq('user_id', response.user.id) \
+                         .execute()
         
+        if not profile.data:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User profile not found"
+            )
+
+        role = profile.data[0]['role']
+
         return AuthResponse(
             access_token=response.session.access_token,
             refresh_token=response.session.refresh_token,
@@ -100,7 +132,8 @@ async def sign_in(
                 full_name=response.user.user_metadata.get("full_name"),
                 display_name=response.user.user_metadata.get("display_name"),
                 email_confirmed=response.user.email_confirmed_at is not None,
-                created_at=response.user.created_at
+                created_at=response.user.created_at,
+                role=role
             ),
             message="Sign in successful"
         )
@@ -176,9 +209,6 @@ async def get_current_user(
 ):
     """Get current user information"""
     try:
-        # Verify and decode the JWT token
-        user_data = verify_jwt_token(credentials.credentials)
-        
         # Get user from Supabase
         response = supabase.auth.get_user(credentials.credentials)
         
@@ -187,14 +217,29 @@ async def get_current_user(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid or expired token"
             )
+
+        # NEW: Get role from profiles table
+        profile = supabase.table('profiles') \
+                         .select('role') \
+                         .eq('user_id', response.user.id) \
+                         .execute()
         
+        if not profile.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User profile not found"
+            )
+
+        role = profile.data[0]['role']
+
         return UserResponse(
             id=response.user.id,
             email=response.user.email,
             full_name=response.user.user_metadata.get("full_name"),
             display_name=response.user.user_metadata.get("display_name"),
             email_confirmed=response.user.email_confirmed_at is not None,
-            created_at=response.user.created_at
+            created_at=response.user.created_at,
+            role=role
         )
         
     except Exception as e:
