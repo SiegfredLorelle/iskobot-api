@@ -6,7 +6,7 @@ from app.config import Config
 from app.models.auth import TokenPayload, UserResponse
 import logging
 
-logger = logging.getLogger(__name__)
+# logger = logging.getLogger(__name__)
 security = HTTPBearer()
 
 def get_supabase_client() -> Client:
@@ -47,7 +47,7 @@ def verify_jwt_token(token: str) -> TokenPayload:
             detail="Invalid token"
         )
     except Exception as e:
-        logger.error(f"Token verification error: {str(e)}")
+        # logger.error(f"Token verification error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials"
@@ -85,7 +85,7 @@ async def get_current_user(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Get current user error: {str(e)}")
+        # logger.error(f"Get current user error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials"
@@ -168,7 +168,7 @@ class AuthRequired:
         except HTTPException:
             raise
         except Exception as e:
-            logger.error(f"Auth required error: {str(e)}")
+            # logger.error(f"Auth required error: {str(e)}")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Authentication failed"

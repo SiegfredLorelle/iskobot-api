@@ -20,7 +20,7 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 # Security scheme
 security = HTTPBearer()
 
-logger = logging.getLogger(__name__)
+# logger = logging.getLogger(__name__)
 
 def get_supabase_client() -> Client:
     """Dependency to get Supabase client"""
@@ -67,7 +67,7 @@ async def sign_up(
         )
         
     except Exception as e:
-        logger.error(f"Sign up error: {str(e)}")
+        # logger.error(f"Sign up error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Registration failed: {str(e)}"
@@ -106,7 +106,7 @@ async def sign_in(
         )
         
     except Exception as e:
-        logger.error(f"Sign in error: {str(e)}")
+        # logger.error(f"Sign in error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password"
@@ -128,7 +128,7 @@ async def sign_out(
         return {"message": "Successfully signed out"}
         
     except Exception as e:
-        logger.error(f"Sign out error: {str(e)}")
+        # logger.error(f"Sign out error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Sign out failed"
@@ -163,7 +163,7 @@ async def refresh_token(
         }
         
     except Exception as e:
-        logger.error(f"Token refresh error: {str(e)}")
+        # logger.error(f"Token refresh error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token refresh failed"
@@ -198,7 +198,7 @@ async def get_current_user(
         )
         
     except Exception as e:
-        logger.error(f"Get user error: {str(e)}")
+        # logger.error(f"Get user error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication required"
@@ -216,7 +216,7 @@ async def forgot_password(
         return {"message": "Password reset email sent successfully"}
         
     except Exception as e:
-        logger.error(f"Password reset error: {str(e)}")
+        # logger.error(f"Password reset error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Failed to send password reset email"
@@ -247,7 +247,7 @@ async def update_password(
         return {"message": "Password updated successfully"}
         
     except Exception as e:
-        logger.error(f"Password update error: {str(e)}")
+        # logger.error(f"Password update error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Failed to update password"
@@ -272,7 +272,7 @@ async def resend_confirmation(
         return {"message": "Confirmation email sent successfully"}
         
     except Exception as e:
-        logger.error(f"Resend confirmation error: {str(e)}")
+        # logger.error(f"Resend confirmation error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Failed to resend confirmation email"

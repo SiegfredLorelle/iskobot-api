@@ -14,6 +14,7 @@ import requests
 from bs4 import BeautifulSoup
 import asyncio
 import aiohttp
+from fastapi import Path
 
 # Initialize router
 router = APIRouter(prefix="/rag", tags=["RAG Management"])
@@ -52,6 +53,8 @@ class WebsiteResponse(BaseModel):
     created_at: datetime
     updated_at: Optional[datetime]
 
+class WebsiteCreate(BaseModel):
+    url: HttpUrl
 class VectorizationToggleRequest(BaseModel):
     vectorized: bool
 
@@ -60,7 +63,7 @@ ALLOWED_FILE_TYPES = {
     'image/jpeg', 'image/jpg', 'image/png', 'application/pdf'
 }
 
-MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
 
 def get_supabase_client() -> Client:
     """Dependency to get Supabase client"""
@@ -73,23 +76,17 @@ def get_supabase_client() -> Client:
 async def upload_files(
     files: List[UploadFile] = File(...),
     supabase: Client = Depends(get_supabase_client)
-    # user: dict = Depends(get_current_user) # Uncomment if user authentication is required
 ):
     """Upload multiple files to Supabase Storage and record metadata in rag_files table."""
     try:
-        if len(files) > 10:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Maximum 10 files allowed per upload"
-            )
-        
+
         uploaded_files = []
         
         for file in files:
             if file.content_type not in ALLOWED_FILE_TYPES:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"File type {file.content_type} not allowed. Allowed types: JPEG, JPG, PNG, PDF"
+                    detail=f"File type {file.content_type} not allowed. Allowed types: DOCX, PDF, PPTX"
                 )
             
             file_content = await file.read()
@@ -112,7 +109,7 @@ async def upload_files(
                     "upsert": False 
                 }
             )
-            
+
             if hasattr(storage_response, 'error') and storage_response.error:
                 raise HTTPException(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -122,12 +119,13 @@ async def upload_files(
             file_record = {
                 "id": file_id,
                 "name": file.filename,
+                "storage_name": storage_filename,
                 "size": len(file_content),
                 "type": file.content_type,
-                "storage_path": storage_filename,
                 "uploaded_at": datetime.now(timezone.utc).isoformat(),
-                "vectorized": False, 
+                "vectorized": False,
             }
+
             
             db_response = supabase.table("rag_files").insert(file_record).execute()
             
@@ -152,7 +150,7 @@ async def upload_files(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"File upload error: {str(e)}")
+        logger.error(f"File upload error: {str(e)}") 
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="File upload failed"
@@ -192,69 +190,53 @@ async def get_user_files(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Could not retrieve files: {e}")
 
 
-## Web Source Management Routes
-
-@router.post("/websites/add_initial", response_model=List[WebsiteResponse], status_code=status.HTTP_201_CREATED)
-async def add_initial_websites(
+@router.delete("/files/{file_id}", status_code=204)
+async def delete_file(
+    file_id: str = Path(..., description="The ID of the file to delete"),
     supabase: Client = Depends(get_supabase_client)
 ):
-    """Adds a predefined list of web sources to the rag_web_sources table."""
-    initial_urls = [
-        "https://sites.google.com/view/pupous",
-        "https://pupsinta.freshservice.com/support/solutions",
-        "https://www.pup.edu.ph/"
-    ]
-    
-    web_sources_to_insert = []
-    current_utc_time = datetime.now(timezone.utc).isoformat(timespec='microseconds') + 'Z'
-
-    for url_str in initial_urls:
-        web_sources_to_insert.append({
-            "id": str(uuid.uuid4()),
-            "url": url_str,
-            "last_scraped": None,
-            "status": "queued",
-            "vectorized": False,
-            "error_message": None,
-            "created_at": current_utc_time,
-            "updated_at": current_utc_time, 
-        })
-
+    """Delete a file from the rag_files table and Supabase storage."""
     try:
-        db_response = supabase.table("rag_websites").insert(web_sources_to_insert).execute()
+        # Step 1: Get the file metadata
+        file_query = supabase.table("rag_files").select("name").eq("id", file_id).single().execute()
+        file_data = file_query.data
 
-        if hasattr(db_response, 'error') and db_response.error:
-            logger.error(f"Supabase error inserting web sources: {db_response.error.message}")
+        if not file_data:
             raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to insert web sources: {db_response.error.message}"
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="File not found in database"
             )
-        
-        inserted_websites = []
-        if db_response.data:
-            for record in db_response.data:
-                inserted_websites.append(WebsiteResponse(
-                    id=record["id"],
-                    url=record["url"],
-                    last_scraped=datetime.fromisoformat(record["last_scraped"].replace('Z', '+00:00')) if record.get("last_scraped") else None,
-                    status=record["status"],
-                    vectorized=record["vectorized"],
-                    error_message=record["error_message"],
-                    created_at=datetime.fromisoformat(record["created_at"].replace('Z', '+00:00')),
-                    updated_at=datetime.fromisoformat(record["updated_at"].replace('Z', '+00:00')) if record.get("updated_at") else None
-                ))
-        
-        return inserted_websites
 
-    except HTTPException:
-        raise
+        file_name = file_data["name"]
+
+        # Step 2: Delete from Supabase Storage
+        try:
+            file_query = supabase.table("rag_files").select("storage_name").eq("id", file_id).single().execute()
+            file_data = file_query.data
+            storage_name = file_data["storage_name"]
+            # Delete directly
+            supabase.storage.from_("iskobot-documents-2.0-lms-only").remove([storage_name])
+        except Exception as storage_err:
+            logger.warning(f"Storage delete warning for {file_name}: {storage_err}")
+
+        # Step 3: Delete metadata from rag_files table
+        db_response = supabase.table("rag_files").delete().eq("id", file_id).execute()
+        if not db_response.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="File metadata not found"
+            )
+
+        return  # 204 No Content
+
     except Exception as e:
-        logger.error(f"Error adding initial web sources: {str(e)}")
+        logger.error(f"Error deleting file {file_id}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to add initial web sources: {e}"
+            detail=f"Error deleting file: {str(e)}"
         )
 
+## Web Source Management Routes
 @router.get("/websites", response_model=List[WebsiteResponse])
 async def get_all_websites(
     supabase: Client = Depends(get_supabase_client)
@@ -292,4 +274,66 @@ async def get_all_websites(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Could not retrieve web sources: {e}"
+        )
+    
+
+@router.delete("/websites/{website_id}", status_code=204)
+async def delete_website(
+    website_id: str = Path(..., description="The ID of the website to delete"),
+    supabase: Client = Depends(get_supabase_client)
+):
+    """Delete a website from the rag_websites table."""
+    try:
+        response = supabase.table("rag_websites").delete().eq("id", website_id).execute()
+
+        # If no records were deleted, raise 404
+        if not response.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Website not found"
+            )
+
+        return  # 204 No Content
+
+    except Exception as e:
+        logger.error(f"Error deleting website {website_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error deleting website: {str(e)}"
+        )
+    
+
+@router.post("/websites", status_code=201)
+async def add_website(
+    website: WebsiteCreate,
+    supabase: Client = Depends(get_supabase_client)
+):
+    try:
+        now = datetime.utcnow().isoformat()
+
+        new_website = {
+            "id": str(uuid.uuid4()),
+            "url": str(website.url),
+            "status": "pending",
+            "vectorized": False,
+            "created_at": now,
+            "updated_at": now,
+            "last_scraped": None,
+            "error_message": None,
+        }
+
+        response = supabase.table("rag_websites").insert(new_website).execute()
+
+        if not response.data:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to insert website"
+            )
+
+        return response.data[0]
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error adding website: {e}"
         )
