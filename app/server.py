@@ -22,7 +22,7 @@ from app.routes.auth import router as auth_router
 from app.routes.kms import router as kms_router
 from app.routes.ingestor import router as ingestor_router
 from elevenlabs.client import ElevenLabs
-from sessions import create_sessions_router, create_chat_router
+from app.sessions import create_sessions_router, create_chat_router
 from supabase import create_client
 
 supabase: Client = create_client(
