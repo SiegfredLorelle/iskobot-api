@@ -22,6 +22,8 @@ from app.routes.auth import router as auth_router
 from app.routes.kms import router as kms_router
 from app.routes.ingestor import router as ingestor_router
 from elevenlabs.client import ElevenLabs
+from sessions import create_sessions_router, create_chat_router
+from supabase import create_client
 
 supabase: Client = create_client(
     Config.SUPABASE_URL,
@@ -51,10 +53,6 @@ app.add_middleware(
     allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
 )
 
-# Include authentication routes
-app.include_router(auth_router)
-app.include_router(kms_router)
-app.include_router(ingestor_router)
 
 # (1) Initialize VectorStore
 vectorstore = initialize_vectorstore()
@@ -117,6 +115,24 @@ chain = (
     | llm
     | StrOutputParser()
 )
+
+# Include authentication routes
+app.include_router(auth_router)
+app.include_router(kms_router)
+app.include_router(ingestor_router)
+app.include_router(
+    create_sessions_router(supabase, chain, retry_with_backoff)
+)
+
+app.include_router(
+    create_chat_router(
+        supabase_client=supabase,
+        llm=llm,
+        knowledge_bank_retriever=knowledge_bank_retriever,
+        retry_with_backoff=retry_with_backoff
+    )
+)
+
 
 # Redirect root to playground
 @app.get("/")
