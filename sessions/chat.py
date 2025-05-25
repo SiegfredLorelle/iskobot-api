@@ -22,11 +22,13 @@ def create_chat_router(supabase_client, llm, knowledge_bank_retriever, retry_wit
     ):
         if credentials:
             try:
-                return await auth_service.get_current_user(credentials.credentials)
+                # Reconstruct the Authorization header value
+                auth_header = f"{credentials.scheme} {credentials.credentials}"
+                return await auth_service.get_current_user(auth_header)
             except HTTPException:
                 pass
         return None
-
+    
     context_aware_prompt = PromptTemplate.from_template("""\
     You're **Iskobot**, a helpful and knowledgeable assistant in Computer Engineering.
 

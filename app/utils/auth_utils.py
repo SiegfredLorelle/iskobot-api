@@ -23,7 +23,7 @@ def verify_jwt_token(token: str) -> TokenPayload:
         # Supabase handles the verification on their end
         payload = jwt.decode(
             token, 
-            options={"verify_signature": False, "verify_exp": True}
+            options={"verify_signature": False, "verify_exp": False}
         )
         
         token_data = TokenPayload(**payload)
@@ -61,8 +61,8 @@ async def get_current_user(
     Dependency to get the current authenticated user
     """
     try:
-        # Verify the token
-        token_data = verify_jwt_token(credentials.credentials)
+        # # Verify the token
+        # token_data = verify_jwt_token(credentials.credentials)
         
         # Get user from Supabase
         response = supabase.auth.get_user(credentials.credentials)
@@ -117,8 +117,8 @@ def require_auth(
             detail="Authorization header required"
         )
     
-    # Basic token validation
-    verify_jwt_token(credentials.credentials)
+    # # Basic token validation
+    # verify_jwt_token(credentials.credentials)
     
     return credentials.credentials
 
@@ -135,8 +135,8 @@ class AuthRequired:
         supabase: Client = Depends(get_supabase_client)
     ) -> UserResponse:
         try:
-            # Verify token
-            verify_jwt_token(credentials.credentials)
+            # # Verify token
+            # verify_jwt_token(credentials.credentials)
             
             # Get user
             response = supabase.auth.get_user(credentials.credentials)
