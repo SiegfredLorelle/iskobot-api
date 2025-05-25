@@ -6,7 +6,6 @@ readme = "README.md"
 authors = ["Siegfred Lorelle Mina <siegfredlorelle09@gmail.com>"]
 packages = [
     { include = "app" },
-    { include = "packages" }, 
 ]
 
 [tool.poetry.dependencies]

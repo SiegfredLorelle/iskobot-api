@@ -1,20 +1,28 @@
 FROM python:3.11-slim
 
-RUN pip install poetry==1.6.1
+# 1. Install system dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends build-essential curl && \
+    rm -rf /var/lib/apt/lists/*
 
+# 2. Set Python path
+ENV PYTHONPATH="/code"
+
+# 3. Install Poetry
+RUN pip install poetry==1.8.3
 RUN poetry config virtualenvs.create false
 
 WORKDIR /code
 
-COPY ./pyproject.toml ./README.md ./poetry.lock* ./
+# 4. Copy dependency files
+COPY pyproject.toml poetry.lock ./
 
-COPY ./package[s] ./packages
+# 5. Install dependencies only (not the package itself)
+RUN poetry install --no-interaction --no-ansi --no-root
 
-RUN poetry install  --no-interaction --no-ansi --no-root
-
+# 6. Copy application code
 COPY ./app ./app
-
-RUN poetry install --no-interaction --no-ansi
+COPY ./packages ./packages
 
 EXPOSE 8080
 
