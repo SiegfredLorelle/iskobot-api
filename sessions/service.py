@@ -127,7 +127,8 @@ class SessionService:
             is_active=session_data.get("is_active", True),
             message_count=len(messages),
             last_message=next(
-                (msg["content"] for msg in reversed(messages) if msg["role"] == "user"),
+                (msg["content"] for msg in reversed(messages) 
+                if msg["role"] == "user"),  # Matches your existing logic
                 None
             )
         )
