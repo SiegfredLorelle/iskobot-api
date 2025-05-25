@@ -7,7 +7,6 @@ requires-python = "^3.11"
 authors = [
     { name = "Siegfred Lorelle Mina", email = "siegfredlorelle09@gmail.com" }
 ]
-dynamic = ["dependencies"]
 
 [tool.poetry]
 packages = [
