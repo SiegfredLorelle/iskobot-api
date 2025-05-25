@@ -1,11 +1,12 @@
 [tool.poetry]
-name = "rag-langchain"
+name = "iskobot-api"
 version = "0.1.0"
 description = ""
-authors = ["Your Name <you@example.com>"]
+authors = ["Siegfred Lorelle Mina <siegfredlorelle09@gmail.com>"]
 readme = "README.md"
 packages = [
     { include = "app" },
+    { include = "package" },
 ]
 
 [tool.poetry.dependencies]
