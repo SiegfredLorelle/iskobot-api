@@ -1,6 +1,11 @@
 FROM python:3.11-slim
 
-# Set Python path to include /code
+# Install system dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends build-essential curl && \
+    rm -rf /var/lib/apt/lists/*
+
+# Set Python path
 ENV PYTHONPATH="${PYTHONPATH}:/code"
 
 # Install Poetry
@@ -9,14 +14,17 @@ RUN poetry config virtualenvs.create false
 
 WORKDIR /code
 
-# Copy dependency files
-COPY ./pyproject.toml ./README.md ./poetry.lock* ./
+# Copy only dependency files first
+COPY pyproject.toml poetry.lock* README.md ./
 
-# Copy directories
+# Install project dependencies (without the app code)
+RUN poetry install --no-interaction --no-ansi --no-root
+
+# Copy the rest of the code
 COPY ./packages ./packages
 COPY ./app ./app
 
-# Install dependencies AND your app as a package
+# Install the project as a package
 RUN poetry install --no-interaction --no-ansi
 
 EXPOSE 8080
