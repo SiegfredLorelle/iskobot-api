@@ -1,5 +1,6 @@
 # app/routes/rag.py
-from fastapi import APIRouter, HTTPException, Depends, status, File, UploadFile, Form
+from fastapi import APIRouter, HTTPException, Depends, status, File, UploadFile, Response, Form
+from fastapi import Response
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, HttpUrl, validator
 from supabase import Client
@@ -234,6 +235,49 @@ async def delete_file(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error deleting file: {str(e)}"
+        )
+    
+@router.get("/files/{file_id}/download")
+async def download_file(
+    file_id: str = Path(..., description="The ID of the file to download"),
+    supabase: Client = Depends(get_supabase_client),
+):
+    try:
+        # Retrieve file metadata - make sure to select both storage_name and name
+        file_query = supabase.table("rag_files").select("storage_name, name").eq("id", file_id).single().execute()
+        
+        if not file_query.data:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
+        
+        storage_name = file_query.data["storage_name"]
+        filename = file_query.data["name"]
+        
+        # Fixed logging - use logger instead of print.log
+        logger.info(f"Downloading file: {storage_name}, original name: {filename}")
+        
+        # Download file from storage
+        file_data = supabase.storage.from_("iskobot-documents-2.0-lms-only").download(storage_name)
+        
+        if not file_data:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found in storage")
+        
+        # Determine media type
+        media_type, _ = mimetypes.guess_type(filename)
+        media_type = media_type or "application/octet-stream"
+        
+        return Response(
+            content=file_data,
+            media_type=media_type,
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error downloading file: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+            detail="File download failed"
         )
 
 ## Web Source Management Routes
