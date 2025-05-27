@@ -346,6 +346,69 @@ async def delete_website(
             detail=f"Error deleting website: {str(e)}"
         )
     
+@router.delete("/files/batch", status_code=200)
+async def delete_all_files_with_report(supabase: Client = Depends(get_supabase_client)):
+    """Delete all files from storage and database with detailed reporting"""
+    try:
+        # Get all files
+        files_query = supabase.table("rag_files").select("id, storage_name, name").execute()
+        
+        if not files_query.data:
+            return {
+                "success": True,
+                "message": "No files found to delete",
+                "deleted_count": 0,
+                "errors": []
+            }
+        
+        files_to_delete = files_query.data
+        total_files = len(files_to_delete)
+        errors = []
+        successful_deletions = 0
+        
+        logger.info(f"Starting batch deletion of {total_files} files")
+        
+        # Delete each file individually for better error tracking
+        for file_record in files_to_delete:
+            file_id = file_record["id"]
+            storage_name = file_record["storage_name"]
+            file_name = file_record["name"]
+            
+            try:
+                # Delete from storage
+                if storage_name:
+                    try:
+                        supabase.storage.from_("iskobot-documents-2.0-lms-only").remove([storage_name])
+                    except Exception as storage_err:
+                        errors.append(f"Failed to delete {file_name} from storage: {str(storage_err)}")
+                
+                # Delete from database
+                db_response = supabase.table("rag_files").delete().eq("id", file_id).execute()
+                
+                if db_response.data:
+                    successful_deletions += 1
+                else:
+                    errors.append(f"Failed to delete {file_name} from database: No data returned")
+                    
+            except Exception as e:
+                errors.append(f"Failed to delete {file_name}: {str(e)}")
+        
+        logger.info(f"Batch deletion completed: {successful_deletions}/{total_files} files deleted successfully")
+        
+        return {
+            "success": successful_deletions > 0,
+            "message": f"Deleted {successful_deletions} out of {total_files} files",
+            "deleted_count": successful_deletions,
+            "total_files": total_files,
+            "errors": errors
+        }
+        
+    except Exception as e:
+        logger.error(f"Error in batch file deletion: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Batch deletion failed: {str(e)}"
+        )
 
 @router.post("/websites", status_code=201)
 async def add_website(
