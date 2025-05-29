@@ -61,7 +61,9 @@ class VectorizationToggleRequest(BaseModel):
 
 # Allowed file types
 ALLOWED_FILE_TYPES = {
-    'image/jpeg', 'image/jpg', 'image/png', 'application/pdf'
+    'application/pdf',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document', # DOCX
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation', # PPTX
 }
 
 MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
